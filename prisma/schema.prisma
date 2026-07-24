@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model blogger {
+  authorid                                   BigInt                   @id @default(autoincrement())
+  bio                                        String?                  @db.VarChar(250)
+  createdat                                  DateTime?                @default(now()) @db.Timestamp(6)
+  email                                      String                   @unique(map: "ukn17h1b6rgeklkl1iejyeer8xx") @db.VarChar(255)
+  name                                       String                   @db.VarChar(30)
+  password                                   String                   @db.VarChar(255)
+  profilepicture                             String?                  @db.VarChar(255)
+  updatedat                                  DateTime?                @default(now()) @db.Timestamp(6)
+  username                                   String                   @unique(map: "uk7yb1oq1cgr5ylqoe49co4ffsd") @db.VarChar(20)
+  bloggerstatus                              blogger_status_enum?     @default(active)
+  sociallinks                                Json?                    @db.Json
+  category                                   category[]
+  collaboration                              collaboration[]
+  community                                  community[]
+  connection_connection_followingidToblogger connection[]             @relation("connection_followingidToblogger")
+  connection_connection_followeridToblogger  connection[]             @relation("connection_followeridToblogger")
+  keywordassignment                          keywordassignment[]
+  membership                                 membership[]
+  post                                       post[]
+  postcategoryassignment                     postcategoryassignment[]
+  postcomment                                postcomment[]
+  postinteraction                            postinteraction[]
+  suggestion                                 suggestion[]
+}
+
+model category {
+  categoryid             BigInt                   @id @default(autoincrement())
+  categorydescription    String                   @db.VarChar(1000)
+  categoryicon           String?                  @db.VarChar(255)
+  createdat              DateTime?                @default(now()) @db.Timestamp(6)
+  name                   String                   @db.VarChar(255)
+  updatedat              DateTime?                @default(now()) @db.Timestamp(6)
+  createdby              BigInt
+  blogger                blogger                  @relation(fields: [createdby], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fkt5h4ky8bib11e0ai6pt951evu")
+  postcategoryassignment postcategoryassignment[]
+}
+
+model collaboration {
+  collaborationid   BigInt                   @id @default(autoincrement())
+  createdat         DateTime                 @db.Timestamp(6)
+  articleid         BigInt
+  authorid          BigInt
+  colloborationrole collaboration_role_enum? @default(author)
+  blogger           blogger                  @relation(fields: [authorid], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fk5w4rovmkhqlsmd6yykqgfwd8h")
+  post              post                     @relation(fields: [articleid], references: [articleid], onDelete: NoAction, onUpdate: NoAction, map: "fkkc94ajqf6qk7pdo1mwou0jsqp")
+}
+
+model community {
+  communityid          BigInt       @id @default(autoincrement())
+  communitydescription String       @db.VarChar(1000)
+  communityicon        String?      @db.VarChar(255)
+  createdat            DateTime?    @default(now()) @db.Timestamp(6)
+  name                 String       @db.VarChar(255)
+  updatedat            DateTime?    @default(now()) @db.Timestamp(6)
+  createdby            BigInt
+  blogger              blogger      @relation(fields: [createdby], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fk4vw0jf57ecf5ub9l8vjr4hm6a")
+  membership           membership[]
+}
+
+model connection {
+  connectionid                            BigInt                  @id @default(autoincrement())
+  createdat                               DateTime                @db.Timestamp(6)
+  followerid                              BigInt
+  followingid                             BigInt
+  connectionstatus                        connection_status_enum? @default(pending)
+  blogger_connection_followingidToblogger blogger                 @relation("connection_followingidToblogger", fields: [followingid], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fk16s0toue8sd1ynuy085p6ah63")
+  blogger_connection_followeridToblogger  blogger                 @relation("connection_followeridToblogger", fields: [followerid], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fkioajg40yrde6vm5w19136b5wn")
+}
+
+model keyword {
+  keywordid          BigInt              @id @default(autoincrement())
+  createdat          DateTime?           @default(now()) @db.Timestamp(6)
+  keyworddescription String              @db.VarChar(1000)
+  keywordicon        String              @db.VarChar(255)
+  name               String              @db.VarChar(255)
+  updatedat          DateTime?           @default(now()) @db.Timestamp(6)
+  keywordassignment  keywordassignment[]
+}
+
+model keywordassignment {
+  keywordassignmentid BigInt   @id @default(autoincrement())
+  createdat           DateTime @db.Timestamp(6)
+  articleid           BigInt
+  assignedby          BigInt
+  keywordid           BigInt
+  post                post     @relation(fields: [articleid], references: [articleid], onDelete: NoAction, onUpdate: NoAction, map: "fk4ctb8th6k75wnvrrmeqr8cfw3")
+  keyword             keyword  @relation(fields: [keywordid], references: [keywordid], onDelete: NoAction, onUpdate: NoAction, map: "fkf7w7a5pjhjjoqcdkiiksjqd95")
+  blogger             blogger  @relation(fields: [assignedby], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fkkxuu0ph5ahl2ilbgnlbpcbnjb")
+}
+
+model membership {
+  membershipid   BigInt                @id @default(autoincrement())
+  joinedat       DateTime              @db.Timestamp(6)
+  authorid       BigInt
+  communityid    BigInt
+  membershiprole membership_role_enum? @default(member)
+  blogger        blogger               @relation(fields: [authorid], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fkbir7n3fqmxrys5hg0tbhp3tho")
+  community      community             @relation(fields: [communityid], references: [communityid], onDelete: NoAction, onUpdate: NoAction, map: "fkdtt16k94khb4yjq2keaclaom2")
+}
+
+model post {
+  articleid              BigInt                   @id @default(autoincrement())
+  commentscount          Int                      @default(0)
+  createdat              DateTime?                @default(now()) @db.Timestamp(6)
+  description            String                   @db.VarChar(3000)
+  dislikes               Int                      @default(0)
+  likes                  Int                      @default(0)
+  postmedia              String?                  @db.VarChar(255)
+  publishedat            DateTime?                @db.Timestamp(6)
+  title                  String                   @db.VarChar(255)
+  updatedat              DateTime?                @default(now()) @db.Timestamp(6)
+  viewscount             Int                      @default(0)
+  primaryauthor          BigInt
+  poststatus             post_status_enum?        @default(draft)
+  collaboration          collaboration[]
+  keywordassignment      keywordassignment[]
+  blogger                blogger                  @relation(fields: [primaryauthor], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fks49vxf3ofyfvx9qht4n9ngnr4")
+  postcategoryassignment postcategoryassignment[]
+  postcomment            postcomment[]
+  postinteraction        postinteraction[]
+}
+
+model postcategoryassignment {
+  postcategoryassignmentid BigInt   @id @default(autoincrement())
+  createdat                DateTime @db.Timestamp(6)
+  articleid                BigInt
+  assignedby               BigInt
+  categoryid               BigInt
+  category                 category @relation(fields: [categoryid], references: [categoryid], onDelete: NoAction, onUpdate: NoAction, map: "fk3t7iga3t769hwxw3hmasq43m8")
+  post                     post     @relation(fields: [articleid], references: [articleid], onDelete: NoAction, onUpdate: NoAction, map: "fkbighstuftyskwayl16ytbdm9g")
+  blogger                  blogger  @relation(fields: [assignedby], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fkc91ckddfuhpqt0hm2t5ak8w5w")
+}
+
+model postcomment {
+  postcommentid     BigInt             @id @default(autoincrement())
+  comment           String             @db.VarChar(750)
+  createdat         DateTime           @db.Timestamp(6)
+  articleid         BigInt
+  authorid          BigInt
+  parentcommentid   BigInt?
+  commenttype       post_comment_enum? @default(comment)
+  postcomment       postcomment?       @relation("postcommentTopostcomment", fields: [parentcommentid], references: [postcommentid], onDelete: NoAction, onUpdate: NoAction, map: "fk8wxoy7hfdkx5usaek7fbkxsqx")
+  other_postcomment postcomment[]      @relation("postcommentTopostcomment")
+  blogger           blogger            @relation(fields: [authorid], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fk9c0h4tkrj6qb538isudvw9w3v")
+  post              post               @relation(fields: [articleid], references: [articleid], onDelete: NoAction, onUpdate: NoAction, map: "fkldlj7gu2qcqkrwodvvrupry1q")
+}
+
+model postinteraction {
+  postreactionid BigInt         @id @default(autoincrement())
+  createdat      DateTime       @db.Timestamp(6)
+  articleid      BigInt
+  authorid       BigInt
+  reactiontype   reaction_enum?
+  blogger        blogger        @relation(fields: [authorid], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fkc5upfiah5mo4afqy8dq6i9oa")
+  post           post           @relation(fields: [articleid], references: [articleid], onDelete: NoAction, onUpdate: NoAction, map: "fkfxk1fss8hjflxemtl5fq1f12r")
+}
+
+model suggestion {
+  suggestionid   BigInt                @id @default(autoincrement())
+  createdat      DateTime              @db.Timestamp(6)
+  message        String                @db.VarChar(1000)
+  authorid       BigInt
+  feedbacktype   feedback_type_enum?
+  feedbackstatus feedback_status_enum? @default(open)
+  blogger        blogger               @relation(fields: [authorid], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fk46a6loydkeyfq373890vtgk5p")
+}
+
+enum blogger_status_enum {
+  active
+  inactive
+  banned
+}
+
+enum collaboration_role_enum {
+  author
+  editor
+  contributor
+}
+
+enum connection_status_enum {
+  pending
+  accepted
+  rejected
+}
+
+enum feedback_status_enum {
+  open
+  resolved
+}
+
+enum feedback_type_enum {
+  bug_report
+  feature_request
+  general
+}
+
+enum membership_role_enum {
+  member
+  admin
+  moderator
+}
+
+enum post_comment_enum {
+  comment
+  reply
+}
+
+enum post_status_enum {
+  draft
+  published
+  archived
+}
+
+enum reaction_enum {
+  like
+  dislike
+}
