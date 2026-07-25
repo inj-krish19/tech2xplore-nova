@@ -1,10 +1,22 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model orgpost {
+  orgpostid   BigInt    @id @default(autoincrement())
+  sourceurl   String    @unique @db.VarChar(500)
+  title       String?   @db.VarChar(255)
+  content     String?
+  coverimage  String?   @db.VarChar(500)
+  publishedat DateTime? @db.Timestamp(6)
+  fetchedat   DateTime  @default(now()) @db.Timestamp(6)
+  updatedat   DateTime  @default(now()) @updatedAt @db.Timestamp(6)
 }
 
 model blogger {
@@ -13,12 +25,16 @@ model blogger {
   createdat                                  DateTime?                @default(now()) @db.Timestamp(6)
   email                                      String                   @unique(map: "ukn17h1b6rgeklkl1iejyeer8xx") @db.VarChar(255)
   name                                       String                   @db.VarChar(30)
-  password                                   String                   @db.VarChar(255)
+  password                                   String?                  @db.VarChar(255)
   profilepicture                             String?                  @db.VarChar(255)
   updatedat                                  DateTime?                @default(now()) @db.Timestamp(6)
   username                                   String                   @unique(map: "uk7yb1oq1cgr5ylqoe49co4ffsd") @db.VarChar(20)
   bloggerstatus                              blogger_status_enum?     @default(active)
   sociallinks                                Json?                    @db.Json
+  authprovider                               auth_provider_enum?      @default(credentials)
+  linkedinaccesstoken                        String?                  @db.VarChar(1000)
+  linkedintokenexpiresat                     DateTime?                @db.Timestamp(6)
+  linkedinurn                                String?                  @db.VarChar(255)
   category                                   category[]
   collaboration                              collaboration[]
   community                                  community[]
@@ -224,4 +240,10 @@ enum post_status_enum {
 enum reaction_enum {
   like
   dislike
+}
+
+enum auth_provider_enum {
+  credentials
+  google
+  linkedin
 }
