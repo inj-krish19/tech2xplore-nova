@@ -1,12 +1,13 @@
 {
-  "name": "tech2xplore-nova",
+  "name": "tech2xplore",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -20,7 +21,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
-    "framer-motion": "^12.42.2",
     "jose": "^6.2.4",
     "lucide-react": "^1.26.0",
     "motion": "^12.42.2",
