@@ -4,7 +4,9 @@ import { NextResponse } from "next/server";
 const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/post/new", "/settings"];
 const ADMIN_ONLY_PREFIXES = ["/admin"];
 
-export default auth((req) => {
+// Renamed from middleware.ts / `export default` -> proxy.ts / `export const proxy`
+// per Next.js 16's rename (network-boundary file, not app-level middleware).
+export const proxy = auth((req) => {
   const { pathname } = req.nextUrl;
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   const isAdminOnly = ADMIN_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
@@ -18,10 +20,8 @@ export default auth((req) => {
   }
 
   if (isAdminOnly) {
-    // Role check happens against DB-backed role, not just JWT presence —
-    // full admin gate is wired up once role is added to the session
-    // callback in stage 2 (role isn't on the `blogger` table's session
-    // shape yet beyond bloggerstatus).
+    // Still just an ADMIN_EMAILS allowlist check at the page level
+    // (see app/admin/page.tsx) — no role column on blogger yet.
   }
 
   return NextResponse.next();
