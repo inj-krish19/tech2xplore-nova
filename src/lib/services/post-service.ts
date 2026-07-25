@@ -1,0 +1,113 @@
+import { db } from "@/lib/db";
+import type { CreatePostInput, UpdatePostInput, ListPostsQuery } from "@/lib/validations/post";
+
+export async function createPost(authorId: bigint, input: CreatePostInput) {
+  const { categoryIds, keywordIds, ...postData } = input;
+
+  return db.$transaction(async (tx) => {
+    const post = await tx.post.create({
+      data: {
+        ...postData,
+        primaryauthor: authorId,
+        publishedat: postData.poststatus === "published" ? new Date() : null,
+      },
+    });
+
+    if (categoryIds?.length) {
+      await tx.postcategoryassignment.createMany({
+        data: categoryIds.map((categoryid) => ({
+          articleid: post.articleid,
+          categoryid: BigInt(categoryid),
+          assignedby: authorId,
+          createdat: new Date(),
+        })),
+      });
+    }
+
+    if (keywordIds?.length) {
+      await tx.keywordassignment.createMany({
+        data: keywordIds.map((keywordid) => ({
+          articleid: post.articleid,
+          keywordid: BigInt(keywordid),
+          assignedby: authorId,
+          createdat: new Date(),
+        })),
+      });
+    }
+
+    return post;
+  });
+}
+
+export async function getPostById(articleId: bigint) {
+  return db.post.findUnique({
+    where: { articleid: articleId },
+    include: {
+      blogger: { select: { authorid: true, name: true, username: true, profilepicture: true } },
+      postcategoryassignment: { include: { category: true } },
+      keywordassignment: { include: { keyword: true } },
+    },
+  });
+}
+
+/** Fire-and-forget from a page view — don't await this in the request path that renders the page. */
+export async function incrementViewCount(articleId: bigint) {
+  return db.post.update({
+    where: { articleid: articleId },
+    data: { viewscount: { increment: 1 } },
+  });
+}
+
+export async function listPosts(query: ListPostsQuery) {
+  const { page, pageSize, status, authorId, categoryId, search } = query;
+
+  const where = {
+    ...(status && { poststatus: status }),
+    ...(authorId && { primaryauthor: BigInt(authorId) }),
+    ...(search && {
+      OR: [
+        { title: { contains: search, mode: "insensitive" as const } },
+        { description: { contains: search, mode: "insensitive" as const } },
+      ],
+    }),
+    ...(categoryId && {
+      postcategoryassignment: { some: { categoryid: BigInt(categoryId) } },
+    }),
+  };
+
+  const [items, total] = await Promise.all([
+    db.post.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: { createdat: "desc" },
+      include: {
+        blogger: { select: { authorid: true, name: true, username: true, profilepicture: true } },
+      },
+    }),
+    db.post.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}
+
+/** Caller must have already verified the requester owns this post or is an admin. */
+export async function updatePost(articleId: bigint, input: UpdatePostInput) {
+  const { categoryIds, keywordIds, ...postData } = input;
+
+  return db.post.update({
+    where: { articleid: articleId },
+    data: {
+      ...postData,
+      ...(postData.poststatus === "published" && { publishedat: new Date() }),
+    },
+  });
+  // NOTE: categoryIds/keywordIds re-assignment on update intentionally
+  // left out for now — needs a decided replace-vs-merge strategy before
+  // wiring it up. Flag if you want that in this pass.
+}
+
+/** Caller must have already verified the requester owns this post or is an admin. */
+export async function deletePost(articleId: bigint) {
+  return db.post.delete({ where: { articleid: articleId } });
+}
