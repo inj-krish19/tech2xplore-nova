@@ -5,10 +5,9 @@ export const postStatusSchema = z.enum(["draft", "published", "archived"]);
 export const createPostSchema = z.object({
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().min(1, "Content is required").max(3000),
-  postmedia: z.string().url().max(255).optional(),
   poststatus: postStatusSchema.default("draft"),
-  categoryIds: z.array(z.string()).optional(), // -> postcategoryassignment
-  keywordIds: z.array(z.string()).optional(), // -> keywordassignment
+  categoryIds: z.array(z.string()).optional(), // -> postcategoryassignment, many-to-many
+  keywordIds: z.array(z.string()).optional(), // -> keywordassignment, optional per post
 });
 export type CreatePostInput = z.infer<typeof createPostSchema>;
 
