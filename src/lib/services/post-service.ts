@@ -127,3 +127,39 @@ export async function canEditPost(articleId: bigint, authorId: bigint) {
   const collab = await db.collaboration.findFirst({ where: { articleid: articleId, authorid: authorId } });
   return collab !== null;
 }
+
+/**
+ * Related posts — shares at least one category or keyword with the
+ * given post, excludes the post itself, published only. No relevance
+ * ranking beyond recency; a real "most similar" ranking would want a
+ * weighted score (shared category + keyword count) which isn't built
+ * here yet.
+ */
+export async function getRelatedPosts(articleId: bigint, limit = 6) {
+  const [categoryIds, keywordIds] = await Promise.all([
+    db.postcategoryassignment.findMany({ where: { articleid: articleId }, select: { categoryid: true } }),
+    db.keywordassignment.findMany({ where: { articleid: articleId }, select: { keywordid: true } }),
+  ]);
+
+  if (categoryIds.length === 0 && keywordIds.length === 0) return [];
+
+  return db.post.findMany({
+    where: {
+      articleid: { not: articleId },
+      poststatus: "published",
+      OR: [
+        ...(categoryIds.length
+          ? [{ postcategoryassignment: { some: { categoryid: { in: categoryIds.map((c) => c.categoryid) } } } }]
+          : []),
+        ...(keywordIds.length
+          ? [{ keywordassignment: { some: { keywordid: { in: keywordIds.map((k) => k.keywordid) } } } }]
+          : []),
+      ],
+    },
+    take: limit,
+    orderBy: { createdat: "desc" },
+    include: {
+      blogger: { select: { authorid: true, name: true, username: true, profilepicture: true } },
+    },
+  });
+}

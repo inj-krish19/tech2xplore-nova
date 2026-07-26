@@ -62,3 +62,49 @@ export async function getFollowStatus(followerId: bigint, followingId: bigint) {
   });
   return { following: existing !== null };
 }
+
+/**
+ * "People you might follow" — based on shared categories the given
+ * user posts in, excluding themselves and anyone they already follow.
+ * Simple overlap count, not a real recommendation ranking.
+ */
+export async function getRelatedUsers(authorId: bigint, limit = 6) {
+  const myCategories = await db.postcategoryassignment.findMany({
+    where: { post: { primaryauthor: authorId } },
+    select: { categoryid: true },
+    distinct: ["categoryid"],
+  });
+  if (myCategories.length === 0) return [];
+
+  const alreadyFollowing = await db.connection.findMany({
+    where: { followerid: authorId },
+    select: { followingid: true },
+  });
+  const excludeIds = [authorId, ...alreadyFollowing.map((f) => f.followingid)];
+
+  const candidates = await db.postcategoryassignment.findMany({
+    where: {
+      categoryid: { in: myCategories.map((c) => c.categoryid) },
+      post: { primaryauthor: { notIn: excludeIds } },
+    },
+    select: {
+      post: {
+        select: {
+          blogger: { select: { authorid: true, name: true, username: true, profilepicture: true } },
+        },
+      },
+    },
+    take: limit * 4,
+  });
+
+  const seen = new Set<string>();
+  const users = [];
+  for (const c of candidates) {
+    const key = c.post.blogger.authorid.toString();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    users.push(c.post.blogger);
+    if (users.length >= limit) break;
+  }
+  return users;
+}
