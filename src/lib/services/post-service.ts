@@ -8,6 +8,7 @@ export async function createPost(authorId: bigint, input: CreatePostInput) {
     const post = await tx.post.create({
       data: {
         ...postData,
+        postmedia: "",
         primaryauthor: authorId,
         publishedat: postData.poststatus === "published" ? new Date() : null,
       },
@@ -110,4 +111,19 @@ export async function updatePost(articleId: bigint, input: UpdatePostInput) {
 /** Caller must have already verified the requester owns this post or is an admin. */
 export async function deletePost(articleId: bigint) {
   return db.post.delete({ where: { articleid: articleId } });
+}
+
+/** Primary author (creator) or DELETE — the "primary only" side of the collaboration model. */
+export async function isPrimaryAuthor(articleId: bigint, authorId: bigint) {
+  const post = await db.post.findUnique({ where: { articleid: articleId }, select: { primaryauthor: true } });
+  return post?.primaryauthor === authorId;
+}
+
+/** Primary author OR any secondary collaborator — the "can edit" side of the collaboration model. */
+export async function canEditPost(articleId: bigint, authorId: bigint) {
+  const post = await db.post.findUnique({ where: { articleid: articleId }, select: { primaryauthor: true } });
+  if (!post) return false;
+  if (post.primaryauthor === authorId) return true;
+  const collab = await db.collaboration.findFirst({ where: { articleid: articleId, authorid: authorId } });
+  return collab !== null;
 }
