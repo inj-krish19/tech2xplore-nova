@@ -1,73 +1,77 @@
 import { notFound } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { getPostById, incrementViewCount } from "@/lib/services/post-service";
-import { db } from "@/lib/db";
-import { CommentThread, type CommentNode } from "@/components/blog/CommentThread";
+import { getUserReaction } from "@/lib/services/reaction-service";
+import { PostEngagement } from "@/components/post/PostEngagement";
+import { CommentSection } from "@/components/post/CommentSection";
+import { RelatedPosts, CollaboratorList } from "@/components/post/RelatedAndCollaborators";
 
-function buildCommentTree(
-    flat: {
-        postcommentid: bigint;
-        comment: string;
-        createdat: Date;
-        parentcommentid: bigint | null;
-        blogger: { username: string; name: string; profilepicture: string | null };
-    }[]
-): CommentNode[] {
-    const byId = new Map<string, CommentNode>();
-    const roots: CommentNode[] = [];
-
-    for (const c of flat) {
-        byId.set(c.postcommentid.toString(), {
-            id: c.postcommentid.toString(),
-            comment: c.comment,
-            createdAt: c.createdat.toISOString(),
-            author: c.blogger,
-            replies: [],
-        });
-    }
-
-    for (const c of flat) {
-        const node = byId.get(c.postcommentid.toString())!;
-        if (c.parentcommentid) {
-            byId.get(c.parentcommentid.toString())?.replies.push(node);
-        } else {
-            roots.push(node);
-        }
-    }
-
-    return roots;
-}
-
-export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const articleId = BigInt(id);
-    const post = await getPostById(articleId);
+
+    const post = await getPostById(articleId).catch(() => null);
     if (!post) notFound();
 
-    // Fire-and-forget — don't block the page render on this write.
-    incrementViewCount(articleId).catch((err) => console.error("[VIEW_COUNT_FAILED]", err));
+    // Fire-and-forget per post-service.ts's own doc comment — never await this
+    // in the render path.
+    void incrementViewCount(articleId);
 
-    const comments = await db.postcomment.findMany({
-        where: { articleid: articleId },
-        orderBy: { createdat: "asc" },
-        select: {
-            postcommentid: true,
-            comment: true,
-            createdat: true,
-            parentcommentid: true,
-            blogger: { select: { username: true, name: true, profilepicture: true } },
-        },
-    });
+    const session = await auth();
+    const viewerAuthorId = (session?.user as { authorid?: string } | undefined)?.authorid;
+    const userReaction = viewerAuthorId
+        ? await getUserReaction(BigInt(viewerAuthorId), articleId).catch(() => null)
+        : null;
 
     return (
-        <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8">
-            <div>
-                <h1 className="text-2xl font-semibold">{post.title}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">by {post.blogger.name}</p>
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+            <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
+                <article className="min-w-0">
+                    <h1 className="font-display text-3xl font-semibold leading-tight">{post.title}</h1>
+                    <div className="mt-3 flex items-center gap-3 text-sm text-muted-foreground">
+                        <span>{post.blogger.name ?? post.blogger.username}</span>
+                        <span aria-hidden>&middot;</span>
+                        <span>{new Date(post.createdat ?? "").toLocaleDateString()}</span>
+                    </div>
+
+                    {(post.postcategoryassignment.length > 0 || post.keywordassignment.length > 0) && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {post.postcategoryassignment.map((a) => (
+                                <span key={a.categoryid.toString()} className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                                    {a.category.name}
+                                </span>
+                            ))}
+                            {post.keywordassignment.map((a) => (
+                                <span key={a.keywordid.toString()} className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
+                                    #{a.keyword.name}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="mt-6">
+                        <PostEngagement
+                            postId={post.articleid.toString()}
+                            initialLikes={post.likes}
+                            initialDislikes={post.dislikes}
+                            initialUserReaction={userReaction}
+                        />
+                    </div>
+
+                    <div className="prose prose-neutral dark:prose-invert mt-8 max-w-none whitespace-pre-wrap text-sm leading-relaxed">
+                        {post.description}
+                    </div>
+
+                    <div className="mt-10 border-t border-border pt-8">
+                        <CommentSection postId={post.articleid.toString()} />
+                    </div>
+                </article>
+
+                <aside className="flex flex-col gap-8">
+                    <CollaboratorList postId={post.articleid.toString()} />
+                    <RelatedPosts postId={post.articleid.toString()} />
+                </aside>
             </div>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{post.description}</p>
-            <hr className="border-border" />
-            <h2 className="text-sm font-semibold">Comments</h2>
-            <CommentThread comments={buildCommentTree(comments)} />
         </div>
     );
 }
