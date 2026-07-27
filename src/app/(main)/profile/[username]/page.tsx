@@ -1,53 +1,74 @@
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
-import { PostCard } from "@/components/blog/PostCard";
+import { auth } from "@/lib/auth";
+import { getProfileByUsername, listRelatedUsers } from "@/lib/services/user-service";
+import { FollowButton } from "@/components/profile/FollowButton";
+import { AvatarPicker } from "@/components/profile/AvatarPicker";
+import { RelatedUsers } from "@/components/profile/RelatedUsers";
 
-export default async function ProfilePage({
-    params,
-}: {
-    params: Promise<{ username: string }>;
-}) {
+export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
     const { username } = await params;
+    const session = await auth();
+    // ASSUMED: session.user carries an authorid field matching the blogger table's
+    // bigint PK — adjust if your session callback names/shapes this differently.
+    const viewerAuthorId = (session?.user as { authorid?: string } | undefined)?.authorid;
+    const viewerId = viewerAuthorId ? BigInt(viewerAuthorId) : undefined;
 
-    const blogger = await db.blogger.findUnique({
-        where: { username },
-        select: {
-            authorid: true,
-            name: true,
-            username: true,
-            bio: true,
-            profilepicture: true,
-        },
-    });
-    if (!blogger) notFound();
+    const profile = await getProfileByUsername(username, viewerId).catch(() => null);
+    if (!profile) notFound();
 
-    const posts = await db.post.findMany({
-        where: { primaryauthor: blogger.authorid, poststatus: "published" },
-        orderBy: { createdat: "desc" },
-    });
+    const relatedUsers = await listRelatedUsers(username, viewerId).catch(() => []);
 
     return (
-        <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8">
-            <div>
-                <h1 className="text-xl font-semibold">{blogger.name}</h1>
-                <p className="text-sm text-muted-foreground">@{blogger.username}</p>
-                {blogger.bio && <p className="mt-2 text-sm">{blogger.bio}</p>}
-            </div>
-            <div className="flex flex-col gap-4">
-                {posts.map((post) => (
-                    <PostCard
-                        key={post.articleid.toString()}
-                        articleid={post.articleid.toString()}
-                        title={post.title}
-                        description={post.description}
-                        postmedia={post.postmedia}
-                        likes={post.likes}
-                        commentscount={post.commentscount}
-                        viewscount={post.viewscount}
-                        author={{ username: blogger.username, name: blogger.name, profilepicture: blogger.profilepicture }}
+        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-lg font-medium text-accent-foreground">
+                        {profile.profilepicture ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={profile.profilepicture} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                            (profile.name ?? profile.username).charAt(0).toUpperCase()
+                        )}
+                    </div>
+                    <div>
+                        <h1 className="font-display text-xl font-semibold">{profile.name ?? profile.username}</h1>
+                        <p className="text-sm text-muted-foreground">@{profile.username} &middot; {profile.followersCount} followers</p>
+                    </div>
+                </div>
+
+                {!profile.isOwnProfile && (
+                    <FollowButton
+                        username={profile.username}
+                        initialFollowing={profile.isFollowing}
+                        initialFollowersCount={profile.followersCount}
                     />
-                ))}
+                )}
             </div>
+
+            {profile.bio && <p className="mt-4 max-w-2xl text-sm text-muted-foreground">{profile.bio}</p>}
+
+            {profile.isOwnProfile && (
+                <div className="mt-8 rounded-xl border border-border bg-card p-5">
+                    <h2 className="font-display text-base font-semibold">Choose your avatar</h2>
+                    <div className="mt-4">
+                        <AvatarPicker currentAvatarUrl={profile.profilepicture} />
+                    </div>
+                </div>
+            )}
+
+            {relatedUsers.length > 0 && (
+                <div className="mt-10">
+                    <RelatedUsers
+                        username={profile.username}
+                        // real shape from listRelatedUsers — mapped to what RelatedUsers expects
+                        preloaded={relatedUsers.map((u) => ({
+                            username: u.username,
+                            name: u.name,
+                            image: u.profilepicture,
+                        }))}
+                    />
+                </div>
+            )}
         </div>
     );
 }
