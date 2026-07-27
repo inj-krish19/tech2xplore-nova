@@ -2,81 +2,94 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { FiSend } from "react-icons/fi";
+import { CategoryKeywordPicker } from "@/components/post/CategoryKeywordPicker";
+import { usePromiseToast } from "@/hooks/usePromiseToast";
+import { apiFetch } from "@/lib/api-client";
 
+/** ASSUMED: POST /api/posts body { title, content, categoryIds, keywordIds } -> { id } */
 export default function NewPostPage() {
     const router = useRouter();
-    const { status } = useSession();
-    const [form, setForm] = useState({ title: "", description: "" });
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const promiseToast = usePromiseToast();
 
-    if (status === "loading") return null;
-    if (status === "unauthenticated") {
-        router.push("/login?callbackUrl=/post/new");
-        return null;
-    }
+    const [title, setTitle] = useState("");
+    const [content, setContent] = useState("");
+    const [categoryIds, setCategoryIds] = useState<string[]>([]);
+    const [keywordIds, setKeywordIds] = useState<string[]>([]);
+    const [submitting, setSubmitting] = useState(false);
 
-    async function handleSubmit(e: React.FormEvent, poststatus: "draft" | "published") {
+    const canSubmit = title.trim().length > 0 && content.trim().length > 0 && !submitting;
+
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        setLoading(true);
-        setError(null);
-
-        const res = await fetch("/api/posts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...form, poststatus }),
-        });
-        const json = await res.json();
-        setLoading(false);
-
-        if (!json.success) {
-            setError(json.error ?? "Something went wrong");
-            return;
+        if (!canSubmit) return;
+        setSubmitting(true);
+        try {
+            const post = await promiseToast(
+                apiFetch<{ id: string }>("/api/posts", {
+                    method: "POST",
+                    body: JSON.stringify({ title, content, categoryIds, keywordIds }),
+                }),
+                {
+                    loading: "Publishing post...",
+                    success: "Post published",
+                    error: (err) => (err instanceof Error ? err.message : "Couldn't publish post"),
+                }
+            );
+            router.push(`/post/${post.id}`);
+        } catch {
+            // toast already shown by promiseToast
+        } finally {
+            setSubmitting(false);
         }
-        router.push(`/post/${json.data.articleid}`);
     }
 
     return (
-        <form className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-8">
-            <input
-                required
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Title"
-                className="rounded-md border border-border px-3 py-2.5 text-lg font-medium"
-            />
-            <textarea
-                required
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Write your post…"
-                rows={12}
-                maxLength={3000}
-                className="rounded-md border border-border px-3 py-2.5 text-sm"
-            />
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <div className="flex gap-3">
-                <button
-                    type="button"
-                    disabled={loading}
-                    onClick={(e) => handleSubmit(e, "draft")}
-                    className="rounded-md border border-border px-4 py-2 text-sm font-medium disabled:opacity-50"
-                >
-                    Save draft
-                </button>
-                <button
-                    type="button"
-                    disabled={loading}
-                    onClick={(e) => handleSubmit(e, "published")}
-                    className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
-                >
-                    Publish
-                </button>
-            </div>
-            {/* NOTE: Tiptap rich-text editor + category/keyword pickers intentionally
-          left as a plain textarea for now — swap in once the editor
-          component itself is on the agenda. */}
-        </form>
+        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+            <h1 className="font-display text-2xl font-semibold">Write a post</h1>
+
+            <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-6">
+                <div>
+                    <label htmlFor="title" className="text-sm font-medium">Title</label>
+                    <input
+                        id="title"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Give your post a clear title"
+                        className="mt-2 w-full rounded-md border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-accent"
+                    />
+                </div>
+
+                <div>
+                    <label htmlFor="content" className="text-sm font-medium">Content</label>
+                    <textarea
+                        id="content"
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        rows={14}
+                        placeholder="Write your post..."
+                        className="mt-2 w-full resize-y rounded-md border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-accent"
+                    />
+                </div>
+
+                <CategoryKeywordPicker
+                    selectedCategoryIds={categoryIds}
+                    selectedKeywordIds={keywordIds}
+                    onChangeCategories={setCategoryIds}
+                    onChangeKeywords={setKeywordIds}
+                />
+
+                <div className="flex justify-end gap-3 border-t border-border pt-6">
+                    <button
+                        type="submit"
+                        disabled={!canSubmit}
+                        className="flex items-center gap-2 rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50"
+                    >
+                        <FiSend className="h-4 w-4" />
+                        {submitting ? "Publishing..." : "Publish"}
+                    </button>
+                </div>
+            </form>
+        </div>
     );
 }

@@ -76,3 +76,18 @@ export async function removeReaction(authorId: bigint, articleId: bigint) {
 
   return db.post.findUnique({ where: { articleid: articleId }, select: { likes: true, dislikes: true } });
 }
+
+/**
+ * ADDED — not in your original file. The post detail page needs to know
+ * the viewer's existing reaction on first render (to highlight the right
+ * button), and nothing in reactToPost/removeReaction exposes that read on
+ * its own. Pure read, no counter interaction — safe to add alongside the
+ * two functions above.
+ */
+export async function getUserReaction(authorId: bigint, articleId: bigint): Promise<ReactionType | null> {
+  const existing = await db.postinteraction.findFirst({
+    where: { articleid: articleId, authorid: authorId },
+    select: { reactiontype: true },
+  });
+  return existing?.reactiontype ?? null;
+}
