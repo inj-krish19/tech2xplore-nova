@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useThemeStore, resolveTheme } from "@/store/themeStore";
 
 /** Mount once near the root layout. Renders nothing; just applies the class. */
-export function ThemeProvider() {
+export function ThemeProvider({ children }: { children: ReactNode }) {
     const theme = useThemeStore((s) => s.theme);
     const [mounted, setMounted] = useState(false);
 
