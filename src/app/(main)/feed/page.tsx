@@ -31,7 +31,7 @@ export default async function FeedPage({
             </div>
 
             <div className="mt-6 flex flex-col gap-4">
-                {result.posts.length === 0 ? (
+                {!result.posts || result.posts.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No posts match these filters.</p>
                 ) : (
                     result.posts.map((post) => (
@@ -57,12 +57,32 @@ async function safeListPosts(args: {
     keywordId?: string;
     page: number;
     pageSize: number;
-}): Promise<{ posts: Array<{ id: string; title: string; description: string }>; total: number }> {
+}): Promise<{
+    posts: Array<{ id: string; title: string; description: string }>;
+    total: number;
+}> {
     try {
-        const result = (await listPosts(args as never)) as unknown;
-        if (Array.isArray(result)) return { posts: result as never, total: result.length };
-        return result as { posts: never; total: number };
+        const result = await listPosts(args as never) as {
+            items: Array<{
+                articleid: bigint;
+                title: string;
+                description: string;
+            }>;
+            total: number;
+        };
+
+        return {
+            posts: result.items.map(post => ({
+                id: post.articleid.toString(),
+                title: post.title,
+                description: post.description,
+            })),
+            total: result.total,
+        };
     } catch {
-        return { posts: [], total: 0 };
+        return {
+            posts: [],
+            total: 0,
+        };
     }
 }

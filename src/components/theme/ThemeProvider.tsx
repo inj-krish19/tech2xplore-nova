@@ -28,5 +28,5 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         return () => mql.removeEventListener("change", onChange);
     }, [theme]);
 
-    return null;
+    return children;
 }

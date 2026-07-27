@@ -4,12 +4,18 @@ import { useEffect, useState } from "react";
 import { FiX } from "react-icons/fi";
 import { apiFetch } from "@/lib/api-client";
 
-type Tag = { id: string; name: string };
+// Real PK names per schema.prisma — categoryid/keywordid, not a shared "id".
+type Category = { categoryid: string; name: string };
+type Keyword = { keywordid: string; name: string };
 
 /**
  * ASSUMED endpoints — adjust if your actual routes differ:
- *   GET /api/categories -> Tag[]
- *   GET /api/keywords   -> Tag[]
+ *   GET /api/categories -> Category[]
+ *   GET /api/keywords   -> Keyword[]
+ *
+ * Defensive against a non-array response (see FeedFilters.tsx for why —
+ * BigInt PKs need to be stringified server-side before JSON.stringify,
+ * or the route can end up returning an error body instead of an array).
  */
 export function CategoryKeywordPicker({
     selectedCategoryIds,
@@ -22,16 +28,22 @@ export function CategoryKeywordPicker({
     onChangeCategories: (ids: string[]) => void;
     onChangeKeywords: (ids: string[]) => void;
 }) {
-    const [categories, setCategories] = useState<Tag[]>([]);
-    const [keywords, setKeywords] = useState<Tag[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [keywords, setKeywords] = useState<Keyword[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
-        Promise.all([apiFetch<Tag[]>("/api/categories"), apiFetch<Tag[]>("/api/keywords")])
+        Promise.all([apiFetch<Category[]>("/api/categories"), apiFetch<Keyword[]>("/api/keywords")])
             .then(([cats, kws]) => {
                 if (cancelled) return;
+                if (!Array.isArray(cats) || !Array.isArray(kws)) {
+                    setError("API returned an unexpected shape — check BigInt serialization on the route.");
+                    setCategories(Array.isArray(cats) ? cats : []);
+                    setKeywords(Array.isArray(kws) ? kws : []);
+                    return;
+                }
                 setCategories(cats);
                 setKeywords(kws);
             })
@@ -54,13 +66,13 @@ export function CategoryKeywordPicker({
         <div className="flex flex-col gap-4">
             <TagPicker
                 label="Categories"
-                options={categories}
+                options={categories.map((c) => ({ id: c.categoryid, name: c.name }))}
                 selectedIds={selectedCategoryIds}
                 onChange={onChangeCategories}
             />
             <TagPicker
                 label="Keywords"
-                options={keywords}
+                options={keywords.map((k) => ({ id: k.keywordid, name: k.name }))}
                 selectedIds={selectedKeywordIds}
                 onChange={onChangeKeywords}
             />
@@ -75,7 +87,7 @@ function TagPicker({
     onChange,
 }: {
     label: string;
-    options: Tag[];
+    options: { id: string; name: string }[];
     selectedIds: string[];
     onChange: (ids: string[]) => void;
 }) {

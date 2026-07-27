@@ -4,27 +4,53 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
 
-type Tag = { id: string; name: string };
+// Real PK names per schema.prisma — categoryid/keywordid, not a shared "id".
+// Both PKs are BigInt server-side; expect them serialized to string over JSON.
+type Category = { categoryid: string; name: string };
+type Keyword = { keywordid: string; name: string };
 
-/** ASSUMED: GET /api/categories, GET /api/keywords -> Tag[] (same as post creation) */
+/**
+ * ASSUMED: GET /api/categories -> Category[], GET /api/keywords -> Keyword[]
+ *
+ * Defensive against a non-array response: category-service.ts's
+ * listCategories()/listKeywords() return rows with a BigInt PK, and
+ * JSON.stringify throws on BigInt unless the route converts it first —
+ * if that conversion is missing, the route can end up returning an error
+ * body instead of an array, which used to crash this component outright
+ * on categories.map(). Now it degrades to an empty, still-usable filter
+ * bar instead.
+ */
 export function FeedFilters() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const [categories, setCategories] = useState<Tag[]>([]);
-    const [keywords, setKeywords] = useState<Tag[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [keywords, setKeywords] = useState<Keyword[]>([]);
+    const [loadError, setLoadError] = useState(false);
 
     useEffect(() => {
-        Promise.all([apiFetch<Tag[]>("/api/categories"), apiFetch<Tag[]>("/api/keywords")])
-            .then(([cats, kws]) => {
-                setCategories(cats);
-                setKeywords(kws);
+        let cancelled = false;
+
+        apiFetch<Category[]>("/api/categories")
+            .then((data) => {
+                if (cancelled) return;
+                setCategories(Array.isArray(data) ? data : []);
+                if (!Array.isArray(data)) setLoadError(true);
             })
-            .catch(() => {
-                setCategories([]);
-                setKeywords([]);
-            });
+            .catch(() => !cancelled && setLoadError(true));
+
+        apiFetch<Keyword[]>("/api/keywords")
+            .then((data) => {
+                if (cancelled) return;
+                setKeywords(Array.isArray(data) ? data : []);
+                if (!Array.isArray(data)) setLoadError(true);
+            })
+            .catch(() => !cancelled && setLoadError(true));
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     function updateParam(key: string, value: string) {
@@ -36,7 +62,7 @@ export function FeedFilters() {
     }
 
     return (
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3">
             <select
                 value={searchParams.get("categoryId") ?? ""}
                 onChange={(e) => updateParam("categoryId", e.target.value)}
@@ -44,7 +70,7 @@ export function FeedFilters() {
             >
                 <option value="">All categories</option>
                 {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                    <option key={c.categoryid} value={c.categoryid}>{c.name}</option>
                 ))}
             </select>
 
@@ -55,7 +81,7 @@ export function FeedFilters() {
             >
                 <option value="">All keywords</option>
                 {keywords.map((k) => (
-                    <option key={k.id} value={k.id}>{k.name}</option>
+                    <option key={k.keywordid} value={k.keywordid}>{k.name}</option>
                 ))}
             </select>
 
@@ -66,6 +92,12 @@ export function FeedFilters() {
                 >
                     Clear filters
                 </button>
+            )}
+
+            {loadError && (
+                <span className="text-xs text-muted-foreground">
+                    Couldn't load filter options — check the API route's BigInt serialization.
+                </span>
             )}
         </div>
     );
