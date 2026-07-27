@@ -16,7 +16,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Reveal } from "@/components/motion/Reveal";
 import { WordsPullUp } from "@/components/motion/WordsPullUp";
-import { listPosts } from "@/lib/services/post-service";
+import { StatsSection } from "@/components/home/StatsSection";
 
 const SERVICES = [
   {
@@ -180,7 +180,12 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 3. EXAMPLE POSTS */}
+
+        {/* 3. STATS SECTION */}
+        <StatsSection />
+
+
+        {/* 4. EXAMPLE POSTS */}
         <section className="border-t border-border px-6 py-20">
           <div className="mx-auto max-w-6xl">
             <Reveal>
@@ -201,7 +206,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 4. CLIENTS — case studies, the actual trust-building section for contract leads */}
+        {/* 5. CLIENTS — case studies, the actual trust-building section for contract leads */}
         <section className="border-t border-border bg-muted px-6 py-20">
           <div className="mx-auto max-w-6xl">
             <Reveal>
@@ -221,7 +226,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 5. WHY WORK WITH US — second "about tech2xplore" section, closes the client pitch */}
+        {/* 6. WHY WORK WITH US — second "about tech2xplore" section, closes the client pitch */}
         <section className="border-t border-border px-6 py-20">
           <div className="mx-auto max-w-6xl">
             <Reveal>
