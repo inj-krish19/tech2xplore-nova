@@ -44,7 +44,7 @@ export async function LoggedInHome({ username }: { username: string | null }) {
                         {recentPosts.length > 0 ? (
                             recentPosts.slice(0, 5).map((post, i) => (
                                 <Reveal
-                                    key={post.articleid ?? i}
+                                    key={post.id ?? i}
                                     delay={i * 0.05}
                                     className="rounded-xl border border-border bg-card p-5"
                                 >
@@ -108,12 +108,18 @@ function SidebarLink({ href, icon: Icon, label }: { href: string; icon: typeof F
     );
 }
 
-/** listPosts's real signature/shape isn't confirmed from this chat's context —
- * wrap in try/catch so a mismatch fails to an empty state instead of a 500. */
-async function safeListPosts(): Promise<Array<{ articleid?: string | number; title: string; description: string }>> {
+/**
+ * ASSUMED to match the same listPosts({ page, pageSize }) -> { posts, total }
+ * signature used in app/(main)/feed/page.tsx — kept consistent across both
+ * call sites so a real-signature fix only needs to happen in one place.
+ * Still wrapped in try/catch: if the real signature differs, this fails to
+ * an empty state instead of a 500.
+ */
+async function safeListPosts(): Promise<Array<{ id: string; title: string; description: string }>> {
     try {
-        const result = await listPosts();
-        return Array.isArray(result) ? result : (result as { posts?: typeof result }).posts ?? [];
+        const result = (await listPosts({ page: 1, pageSize: 5 } as never)) as unknown;
+        if (Array.isArray(result)) return result as never;
+        return ((result as { posts?: never }).posts ?? []) as never;
     } catch {
         return [];
     }
