@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getPostById, incrementViewCount } from "@/lib/services/post-service";
+import { getPostById, incrementViewCount, isPrimaryAuthor } from "@/lib/services/post-service";
 import { getUserReaction } from "@/lib/services/reaction-service";
+import { listCollaborators } from "@/lib/services/collaboration-service";
 import { estimateReadTime } from "@/lib/utils/read-time";
 import { PostEngagement } from "@/components/post/PostEngagement";
 import { CommentSection } from "@/components/post/CommentSection";
-import { RelatedPosts, CollaboratorList } from "@/components/post/RelatedAndCollaborators";
+import { CollaboratorPanel } from "@/components/post/CollaboratorPanel";
+import { RelatedPosts } from "@/components/post/RelatedAndCollaborators";
 
 export default async function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -23,6 +25,11 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
     const userReaction = viewerAuthorId
         ? await getUserReaction(BigInt(viewerAuthorId), articleId).catch(() => null)
         : null;
+
+    const collaborators = await listCollaborators(articleId).catch(() => []);
+    const canManageCollaborators = viewerAuthorId
+        ? await isPrimaryAuthor(articleId, BigInt(viewerAuthorId)).catch(() => false)
+        : false;
 
     return (
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
@@ -60,7 +67,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                             initialLikes={post.likes}
                             initialDislikes={post.dislikes}
                             initialUserReaction={userReaction}
-                            initialShares={post.shares ?? 0}
+                            initialShares={post.shares}
                         />
                     </div>
 
@@ -74,7 +81,20 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                 </article>
 
                 <aside className="flex flex-col gap-8">
-                    <CollaboratorList postId={post.articleid.toString()} />
+                    <CollaboratorPanel
+                        postId={post.articleid.toString()}
+                        canManage={canManageCollaborators}
+                        initialCollaborators={collaborators.map((c) => ({
+                            authorid: c.authorid.toString(),
+                            colloborationrole: c.colloborationrole,
+                            blogger: {
+                                authorid: c.blogger.authorid.toString(),
+                                name: c.blogger.name,
+                                username: c.blogger.username,
+                                profilepicture: c.blogger.profilepicture,
+                            },
+                        }))}
+                    />
                     <RelatedPosts postId={post.articleid.toString()} />
                 </aside>
             </div>
