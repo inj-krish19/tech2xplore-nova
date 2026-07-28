@@ -138,6 +138,7 @@ model post {
   viewscount             Int                      @default(0)
   primaryauthor          BigInt
   poststatus             post_status_enum?        @default(draft)
+  shares                 Int                      @default(0)
   collaboration          collaboration[]
   keywordassignment      keywordassignment[]
   blogger                blogger                  @relation(fields: [primaryauthor], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fks49vxf3ofyfvx9qht4n9ngnr4")

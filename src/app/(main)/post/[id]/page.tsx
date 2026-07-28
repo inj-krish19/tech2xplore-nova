@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getPostById, incrementViewCount } from "@/lib/services/post-service";
 import { getUserReaction } from "@/lib/services/reaction-service";
+import { estimateReadTime } from "@/lib/utils/read-time";
 import { PostEngagement } from "@/components/post/PostEngagement";
 import { CommentSection } from "@/components/post/CommentSection";
 import { RelatedPosts, CollaboratorList } from "@/components/post/RelatedAndCollaborators";
@@ -32,6 +33,10 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                         <span>{post.blogger.name ?? post.blogger.username}</span>
                         <span aria-hidden>&middot;</span>
                         <span>{new Date(post.createdat ?? "").toLocaleDateString()}</span>
+                        <span aria-hidden>&middot;</span>
+                        <span>{estimateReadTime(post.description)} min read</span>
+                        <span aria-hidden>&middot;</span>
+                        <span>{post.viewscount} views</span>
                     </div>
 
                     {(post.postcategoryassignment.length > 0 || post.keywordassignment.length > 0) && (
@@ -55,6 +60,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                             initialLikes={post.likes}
                             initialDislikes={post.dislikes}
                             initialUserReaction={userReaction}
+                            initialShares={post.shares ?? 0}
                         />
                     </div>
 

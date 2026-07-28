@@ -46,7 +46,7 @@ export async function getPostById(articleId: bigint) {
     include: {
       blogger: { select: { authorid: true, name: true, username: true, profilepicture: true } },
       postcategoryassignment: { include: { category: true } },
-      keywordassignment: { include: { keyword: true } },
+      keywordassignment: { include: { keyword: true } }, 
     },
   });
 }

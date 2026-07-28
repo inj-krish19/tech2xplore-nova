@@ -117,3 +117,40 @@ If `prisma/migrations` doesn't exist yet (first migration since your
 original `db pull`), Prisma will prompt to baseline first — accept
 that, it just snapshots current schema as migration zero without
 touching data, then applies this migration on top.
+
+---
+
+# Schema change: post.shares
+
+**Status:** approved — user confirmed via Phase 2 checkpoint (share count decision).
+
+Add alongside `likes`/`dislikes` on the `post` model — same shape, same
+default-zero counter pattern already used for reactions:
+
+```diff
+ model post {
+   articleid              BigInt                   @id @default(autoincrement())
+   commentscount          Int                      @default(0)
+   createdat              DateTime?                @default(now()) @db.Timestamp(6)
+   description            String                   @db.VarChar(3000)
+   dislikes               Int                      @default(0)
+   likes                  Int                      @default(0)
+   postmedia              String?                  @db.VarChar(255)
+   publishedat            DateTime?                @db.Timestamp(6)
++  shares                 Int                      @default(0)
+   title                  String                   @db.VarChar(255)
+   updatedat              DateTime?                @default(now()) @db.Timestamp(6)
+   viewscount             Int                      @default(0)
+   ...
+ }
+```
+
+After editing `schema.prisma`:
+
+```bash
+npx prisma migrate dev --name add_post_shares
+npx prisma generate
+```
+
+This is additive-only (new nullable-safe column with a default) — no
+backfill needed, no existing column touched.

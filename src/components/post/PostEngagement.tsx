@@ -8,10 +8,11 @@ import { useToast } from "@/components/ui/Toast";
 type ReactionType = "like" | "dislike";
 
 /**
- * ASSUMED endpoints (matching reaction-service.ts's two real functions):
+ * ASSUMED endpoints (matching reaction-service.ts's two real functions,
+ * plus the new share-service.ts):
  *   POST   /api/posts/[id]/react   body { type: "like" | "dislike" } -> { likes, dislikes }  (reactToPost)
  *   DELETE /api/posts/[id]/react                                     -> { likes, dislikes }  (removeReaction)
- *   POST   /api/posts/[id]/share   -> { url }
+ *   POST   /api/posts/[id]/share   -> { url, shares }  (recordShare)
  *
  * reactToPost is a no-op when you send the same type you already have —
  * it does NOT clear the reaction — so clearing an active reaction has to
@@ -22,15 +23,18 @@ export function PostEngagement({
     initialLikes,
     initialDislikes,
     initialUserReaction,
+    initialShares,
 }: {
     postId: string;
     initialLikes: number;
     initialDislikes: number;
     initialUserReaction: ReactionType | null;
+    initialShares: number;
 }) {
     const [likes, setLikes] = useState(initialLikes);
     const [dislikes, setDislikes] = useState(initialDislikes);
     const [userReaction, setUserReaction] = useState<ReactionType | null>(initialUserReaction);
+    const [shares, setShares] = useState(initialShares);
     const [reacting, setReacting] = useState(false);
     const { toast } = useToast();
 
@@ -74,8 +78,9 @@ export function PostEngagement({
 
     async function share() {
         try {
-            const { url } = await apiFetch<{ url: string }>(`/api/posts/${postId}/share`, { method: "POST" });
-            await navigator.clipboard.writeText(url);
+            const result = await apiFetch<{ url: string; shares: number }>(`/api/posts/${postId}/share`, { method: "POST" });
+            await navigator.clipboard.writeText(result.url);
+            setShares(result.shares);
             toast({ message: "Link copied to clipboard", variant: "success" });
         } catch (err) {
             toast({ message: err instanceof Error ? err.message : "Couldn't get share link", variant: "error" });
@@ -111,7 +116,7 @@ export function PostEngagement({
                 className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
             >
                 <FiShare2 className="h-4 w-4" />
-                Share
+                Share{shares > 0 ? ` (${shares})` : ""}
             </button>
         </div>
     );
