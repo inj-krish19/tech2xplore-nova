@@ -35,17 +35,18 @@ export function CommentSection({ postId }: { postId: string }) {
     const [posting, setPosting] = useState(false);
     const { toast } = useToast();
     const { data: session } = useSession();
-    const viewerAuthorId = (session?.user as { authorid?: string } | undefined)?.authorid;
+    const viewerAuthorId = (session?.user as { id?: string } | undefined)?.id;
 
     useEffect(() => {
         apiFetch<CommentNode[]>(`/api/posts/${postId}/comments`)
-            .then(setComments)
+            .then((data) => setComments(Array.isArray(data) ? data : []))
             .catch((err) => toast({ message: err.message, variant: "error" }))
             .finally(() => setLoading(false));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [postId]);
 
     function countAll(nodes: CommentNode[]): number {
+        if (!Array.isArray(nodes)) return 0;
         return nodes.reduce((sum, n) => sum + 1 + countAll(n.replies), 0);
     }
 
@@ -60,7 +61,7 @@ export function CommentSection({ postId }: { postId: string }) {
             // Re-fetch rather than splice the new node into the tree by hand —
             // simpler and correct regardless of nesting depth.
             const fresh = await apiFetch<CommentNode[]>(`/api/posts/${postId}/comments`);
-            setComments(fresh);
+            setComments(Array.isArray(fresh) ? fresh : []);
             if (parentcommentid) {
                 setReplyTo(null);
                 setReplyText("");
@@ -85,7 +86,7 @@ export function CommentSection({ postId }: { postId: string }) {
                 return;
             }
             const fresh = await apiFetch<CommentNode[]>(`/api/posts/${postId}/comments`);
-            setComments(fresh);
+            setComments(Array.isArray(fresh) ? fresh : []);
             toast({ message: "Comment deleted", variant: "success" });
         } catch (err) {
             toast({ message: err instanceof Error ? err.message : "Couldn't delete comment", variant: "error" });

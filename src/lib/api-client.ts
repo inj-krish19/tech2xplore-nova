@@ -1,20 +1,37 @@
-/** Thin fetch wrapper — throws with the API's error message on non-2xx so
- * callers can hand the error straight to a toast without re-parsing. */
+/**
+ * Thin fetch wrapper aware of api-response.ts's envelope
+ * ({success, data} / {success, error}) — unwraps `data` on success and
+ * throws the real `error` message on failure, instead of handing callers
+ * the whole envelope as if it were the payload itself.
+ */
 export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
+
+  if (res.status === 204) return undefined as T;
+
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    if (!res.ok) throw new Error(`Request failed (${res.status})`);
+    return undefined as T;
+  }
+
   if (!res.ok) {
-    let message = `Request failed (${res.status})`;
-    try {
-      const body = await res.json();
-      message = body?.error ?? body?.message ?? message;
-    } catch {
-      // response wasn't JSON — keep the generic message
-    }
+    const message =
+      (body as { error?: string; message?: string })?.error ??
+      (body as { error?: string; message?: string })?.message ??
+      `Request failed (${res.status})`;
     throw new Error(message);
   }
-  if (res.status === 204) return undefined as T;
-  return res.json();
+
+  // apiSuccess wraps as { success: true, data }. If a route ever returns
+  // a raw payload without that envelope, fall back to the body as-is.
+  if (body && typeof body === "object" && "data" in body) {
+    return (body as { data: T }).data;
+  }
+  return body as T;
 }

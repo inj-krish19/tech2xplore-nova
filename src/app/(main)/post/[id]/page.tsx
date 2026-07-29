@@ -23,7 +23,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
     void incrementViewCount(articleId);
 
     const session = await auth();
-    const viewerAuthorId = (session?.user as { authorid?: string } | undefined)?.authorid;
+    const viewerAuthorId = (session?.user as { id?: string } | undefined)?.id;
     const userReaction = viewerAuthorId
         ? await getUserReaction(BigInt(viewerAuthorId), articleId).catch(() => null)
         : null;

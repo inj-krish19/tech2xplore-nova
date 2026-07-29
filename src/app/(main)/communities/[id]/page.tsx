@@ -15,7 +15,7 @@ export default async function CommunityDetailPage({ params }: { params: Promise<
     const members = await listCommunityMembers(communityId).catch(() => []);
 
     const session = await auth();
-    const viewerAuthorId = (session?.user as { authorid?: string } | undefined)?.authorid;
+    const viewerAuthorId = (session?.user as { id?: string } | undefined)?.id;
     const isMember = viewerAuthorId
         ? members.some((m) => m.authorid.toString() === viewerAuthorId)
         : false;

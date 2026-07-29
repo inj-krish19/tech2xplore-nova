@@ -10,7 +10,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     const session = await auth();
     // ASSUMED: session.user carries an authorid field matching the blogger table's
     // bigint PK — adjust if your session callback names/shapes this differently.
-    const viewerAuthorId = (session?.user as { authorid?: string } | undefined)?.authorid;
+    const viewerAuthorId = (session?.user as { id?: string } | undefined)?.id;
     const viewerId = viewerAuthorId ? BigInt(viewerAuthorId) : undefined;
 
     const profile = await getProfileByUsername(username, viewerId).catch(() => null);
