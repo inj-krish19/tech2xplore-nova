@@ -3,11 +3,13 @@ import { auth } from "@/lib/auth";
 import { getPostById, incrementViewCount, isPrimaryAuthor } from "@/lib/services/post-service";
 import { getUserReaction } from "@/lib/services/reaction-service";
 import { listCollaborators } from "@/lib/services/collaboration-service";
+import { hasLinkedInConnected } from "@/lib/services/user-service";
 import { estimateReadTime } from "@/lib/utils/read-time";
 import { PostEngagement } from "@/components/post/PostEngagement";
 import { CommentSection } from "@/components/post/CommentSection";
 import { CollaboratorPanel } from "@/components/post/CollaboratorPanel";
 import { RelatedPosts } from "@/components/post/RelatedAndCollaborators";
+import { LinkedInShareButton } from "@/components/post/LinkedInShareButton";
 
 export default async function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -30,6 +32,9 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
     const canManageCollaborators = viewerAuthorId
         ? await isPrimaryAuthor(articleId, BigInt(viewerAuthorId)).catch(() => false)
         : false;
+
+    const canShareToLinkedIn =
+        canManageCollaborators && (await hasLinkedInConnected(post.blogger.authorid).catch(() => false));
 
     return (
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
@@ -61,7 +66,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                         </div>
                     )}
 
-                    <div className="mt-6">
+                    <div className="mt-6 flex flex-wrap items-center gap-3">
                         <PostEngagement
                             postId={post.articleid.toString()}
                             initialLikes={post.likes}
@@ -69,6 +74,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                             initialUserReaction={userReaction}
                             initialShares={post.shares}
                         />
+                        {canShareToLinkedIn && <LinkedInShareButton postId={post.articleid.toString()} />}
                     </div>
 
                     <div className="prose prose-neutral dark:prose-invert mt-8 max-w-none whitespace-pre-wrap text-sm leading-relaxed">

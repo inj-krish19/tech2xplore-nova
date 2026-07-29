@@ -76,11 +76,16 @@ export async function toggleFollow(followerId: bigint, targetUsername: string) {
 }
 
 /**
- * "People you might follow" — recently active bloggers excluding the
- * profile owner and anyone the viewer already follows. No relevance
- * ranking (shared categories/keywords) yet — just recency, same caveat as
- * getRelatedPosts in post-service.ts.
+ * Whether this blogger has a connected LinkedIn account — gates the
+ * "Post to LinkedIn" button on their own posts. Doesn't check token
+ * expiry (linkedintokenexpiresat) since refreshing an expired token is a
+ * server-side concern for whatever actually calls LinkedIn's API, not
+ * this read.
  */
+export async function hasLinkedInConnected(authorId: bigint): Promise<boolean> {
+  const blogger = await db.blogger.findUnique({ where: { authorid: authorId }, select: { linkedinurn: true } });
+  return Boolean(blogger?.linkedinurn);
+}
 export async function listRelatedUsers(username: string, viewerId: bigint | undefined, limit = 6) {
   const target = await db.blogger.findUnique({ where: { username }, select: { authorid: true } });
   if (!target) return [];
