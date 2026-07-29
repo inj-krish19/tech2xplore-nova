@@ -33,18 +33,18 @@ export function FeedFilters() {
         let cancelled = false;
 
         apiFetch<Category[]>("/api/categories")
-            .then((data) => {
+            .then((data: any) => {
                 if (cancelled) return;
-                setCategories(Array.isArray(data) ? data : []);
+                setCategories(Array.isArray(data?.data) ? data.data : []);
                 if (!Array.isArray(data)) setLoadError(true);
             })
             .catch(() => !cancelled && setLoadError(true));
 
         apiFetch<Keyword[]>("/api/keywords")
-            .then((data) => {
+            .then((data: any) => {
                 if (cancelled) return;
-                setKeywords(Array.isArray(data) ? data : []);
-                if (!Array.isArray(data)) setLoadError(true);
+                setKeywords(Array.isArray(data?.data) ? data.data : []);
+                if (!Array.isArray(data.data)) setLoadError(true);
             })
             .catch(() => !cancelled && setLoadError(true));
 

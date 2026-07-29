@@ -78,7 +78,7 @@ export function StatsSection() {
                             <p className="text-xs leading-tight text-muted-foreground">
                                 follower growth
                                 <br />
-                                (46 new in last 30 days, 310 total)
+                                (46 new in last 30 days)
                             </p>
                         </div>
                     </div>
