@@ -13,6 +13,8 @@ import {
     FiUser,
     FiLogOut,
     FiSettings,
+    FiUserPlus,
+    FiBriefcase,
 } from "react-icons/fi";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
@@ -20,7 +22,9 @@ type NavUser = { name: string | null; username: string | null; image: string | n
 
 const NAV_LINKS = [
     { href: "/feed", label: "Feed", icon: FiCompass },
+    { href: "/discover", label: "Discover", icon: FiUserPlus },
     { href: "/communities", label: "Communities", icon: FiUsers },
+    { href: "/org-posts", label: "Company posts", icon: FiBriefcase },
 ];
 
 export function HeaderNav({ user }: { user: NavUser }) {
