@@ -4,6 +4,10 @@ import { getProfileByUsername, listRelatedUsers } from "@/lib/services/user-serv
 import { FollowButton } from "@/components/profile/FollowButton";
 import { AvatarPicker } from "@/components/profile/AvatarPicker";
 import { RelatedUsers } from "@/components/profile/RelatedUsers";
+// ASSUMED export name/shape — adjust to match your real
+// lib/constants/avatar-presets.ts if it exports something other than a
+// plain string[] named AVATAR_PRESETS.
+import { AVATAR_PRESETS } from "@/lib/constants/avatar-presets";
 
 export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
     const { username } = await params;
@@ -51,7 +55,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
                 <div className="mt-8 rounded-xl border border-border bg-card p-5">
                     <h2 className="font-display text-base font-semibold">Choose your avatar</h2>
                     <div className="mt-4">
-                        <AvatarPicker currentAvatarUrl={profile.profilepicture} />
+                        <AvatarPicker currentAvatarUrl={profile.profilepicture} presets={AVATAR_PRESETS} />
                     </div>
                 </div>
             )}

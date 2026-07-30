@@ -4,7 +4,7 @@
  * requirement exactly: these are just static URLs.
  * https://www.dicebear.com/
  */
-export const AVATAR_PRESETS = [
+export const AVATAR_PRESETS: string[] = [
   "https://api.dicebear.com/9.x/notionists/svg?seed=t2x-orbit",
   "https://api.dicebear.com/9.x/notionists/svg?seed=t2x-nova",
   "https://api.dicebear.com/9.x/notionists/svg?seed=t2x-pulse",

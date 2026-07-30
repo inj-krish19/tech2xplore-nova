@@ -1,33 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FiCheck } from "react-icons/fi";
 import { apiFetch } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 
 /**
- * ASSUMED endpoints (both already listed as existing in README §5):
- *   GET  /api/users/me/avatar-options -> string[] (preset URLs)
- *   POST /api/users/me/avatar body { avatarUrl } -> { avatarUrl }
+ * Presets come from lib/constants/avatar-presets.ts (a hardcoded file per
+ * README §5), passed in as a prop from the server component — there's no
+ * DB-backed /api/users/me/avatar-options endpoint, which is what the old
+ * version of this file incorrectly assumed and crashed fetching.
+ *
+ * ASSUMED: POST /api/users/me/avatar body { avatarUrl } -> { avatarUrl }
+ * still saves the selection — that part of the original assumption may
+ * still be correct, only the options-source assumption was wrong.
  */
-export function AvatarPicker({ currentAvatarUrl }: { currentAvatarUrl: string | null }) {
-    const [options, setOptions] = useState<string[] | null>(null);
+export function AvatarPicker({
+    currentAvatarUrl,
+    presets,
+}: {
+    currentAvatarUrl: string | null;
+    presets: string[];
+}) {
     const [selected, setSelected] = useState(currentAvatarUrl);
     const [saving, setSaving] = useState(false);
     const { toast } = useToast();
 
-    useEffect(() => {
-        apiFetch<string[]>("/api/users/me/avatar-options")
-            .then(setOptions)
-            .catch(() => setOptions([]));
-    }, []);
+    const options = Array.isArray(presets) ? presets : [];
 
     async function save(url: string) {
         setSaving(true);
         const prev = selected;
         setSelected(url);
         try {
-            await apiFetch("/api/users/me/avatar", { method: "POST", body: JSON.stringify({ avatarUrl: url }) });
+            await apiFetch("/api/users/me/avatar", { method: "PATCH", body: JSON.stringify({ url }) });
             toast({ message: "Avatar updated", variant: "success" });
         } catch (err) {
             setSelected(prev);
@@ -35,16 +41,6 @@ export function AvatarPicker({ currentAvatarUrl }: { currentAvatarUrl: string | 
         } finally {
             setSaving(false);
         }
-    }
-
-    if (options === null) {
-        return (
-            <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
-                {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="aspect-square animate-pulse rounded-full bg-muted" />
-                ))}
-            </div>
-        );
     }
 
     if (options.length === 0) {
