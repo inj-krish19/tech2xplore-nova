@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getPostById, incrementViewCount, isPrimaryAuthor } from "@/lib/services/post-service";
@@ -42,7 +43,17 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                 <article className="min-w-0">
                     <h1 className="font-display text-3xl font-semibold leading-tight">{post.title}</h1>
                     <div className="mt-3 flex items-center gap-3 text-sm text-muted-foreground">
-                        <span>{post.blogger.name ?? post.blogger.username}</span>
+                        <Link href={`/profile/${post.blogger.username}`} className="flex items-center gap-2 hover:text-foreground">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-xs font-medium text-accent-foreground">
+                                {post.blogger.profilepicture ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={post.blogger.profilepicture} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                    (post.blogger.name ?? post.blogger.username).charAt(0).toUpperCase()
+                                )}
+                            </div>
+                            <span>{post.blogger.name ?? post.blogger.username}</span>
+                        </Link>
                         <span aria-hidden>&middot;</span>
                         <span>{new Date(post.createdat ?? "").toLocaleDateString()}</span>
                         <span aria-hidden>&middot;</span>
@@ -77,7 +88,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                         {canShareToLinkedIn && <LinkedInShareButton postId={post.articleid.toString()} />}
                     </div>
 
-                    <div className="prose prose-neutral dark:prose-invert mt-8 max-w-none whitespace-pre-wrap text-sm leading-relaxed">
+                    <div className="prose prose-neutral dark:prose-invert mt-8 max-w-none whitespace-pre-wrap break-words text-sm leading-relaxed">
                         {post.description}
                     </div>
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api-client";
 
-type RelatedPost = { id: string; title: string; description: string };
+type RelatedPost = { articleid: string; title: string; description: string };
 
 /** ASSUMED: GET /api/posts/[id]/related -> RelatedPost[] */
 export function RelatedPosts({ postId }: { postId: string }) {
@@ -27,8 +27,8 @@ export function RelatedPosts({ postId }: { postId: string }) {
             <div className="mt-3 flex flex-col gap-3">
                 {posts.map((post) => (
                     <Link
-                        key={post.id}
-                        href={`/post/${post.id}`}
+                        key={post.articleid}
+                        href={`/post/${post.articleid}`}
                         className="block rounded-md border border-border bg-card p-3 hover:border-accent"
                     >
                         <p className="text-sm font-medium">{post.title}</p>
