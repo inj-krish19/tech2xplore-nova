@@ -15,7 +15,7 @@ export const passwordSchema = z
   .regex(/[0-9]/, "Password must contain a number");
 
 export const checkEmailSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: z.email("Invalid email address"),
 });
 export type CheckEmailInput = z.infer<typeof checkEmailSchema>;
 
@@ -27,13 +27,13 @@ export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
 export const registerSchema = z.object({
   name: z.string().min(1, "Name is required").max(30),
   username: usernameSchema,
-  email: z.string().email("Invalid email address").max(255),
+  email: z.email("Invalid email address").max(255),
   password: passwordSchema,
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
 export const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: z.email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -44,12 +44,12 @@ export const verifyEmailSchema = z.object({
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 
 export const resendVerificationSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
 });
 export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
 });
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 

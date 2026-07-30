@@ -75,6 +75,15 @@ export async function toggleFollow(followerId: bigint, targetUsername: string) {
   return { following: !existing, followersCount };
 }
 
+/** Backs PATCH /api/users/me — caller must already have the viewer's authorid from the session. */
+export async function updateProfile(authorId: bigint, input: { name?: string; bio?: string }) {
+  return db.blogger.update({
+    where: { authorid: authorId },
+    data: input,
+    select: { authorid: true, name: true, username: true, bio: true, profilepicture: true },
+  });
+}
+
 /**
  * Whether this blogger has a connected LinkedIn account — gates the
  * "Post to LinkedIn" button on their own posts. Doesn't check token
@@ -86,6 +95,94 @@ export async function hasLinkedInConnected(authorId: bigint): Promise<boolean> {
   const blogger = await db.blogger.findUnique({ where: { authorid: authorId }, select: { linkedinurn: true } });
   return Boolean(blogger?.linkedinurn);
 }
+
+/**
+ * Powers the "discover people" page — every blogger except the viewer,
+ * with post count / total likes received / follow status per card.
+ * likesReceived sums post.likes across all of that blogger's posts —
+ * a raw aggregate, not weighted by recency or anything fancier.
+ */
+export async function listDiscoverableUsers(viewerId: bigint | undefined, page: number, pageSize: number) {
+  const where = viewerId ? { authorid: { not: viewerId } } : {};
+
+  const [bloggers, total] = await Promise.all([
+    db.blogger.findMany({
+      where,
+      select: {
+        authorid: true,
+        name: true,
+        username: true,
+        profilepicture: true,
+        bio: true,
+        post: { select: { likes: true } },
+        _count: { select: { post: true } },
+      },
+      orderBy: { createdat: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    db.blogger.count({ where }),
+  ]);
+
+  const followingIds = viewerId
+    ? new Set(
+        (
+          await db.connection.findMany({
+            where: { followerid: viewerId, connectionstatus: "accepted" },
+            select: { followingid: true },
+          })
+        ).map((c) => c.followingid.toString())
+      )
+    : new Set<string>();
+
+  const items = bloggers.map((b) => ({
+    authorid: b.authorid,
+    name: b.name,
+    username: b.username,
+    profilepicture: b.profilepicture,
+    bio: b.bio,
+    postsCount: b._count.post,
+    likesReceived: b.post.reduce((sum, p) => sum + p.likes, 0),
+    isFollowing: followingIds.has(b.authorid.toString()),
+  }));
+
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}
+
+/** Everyone following this blogger — public, per the "everyone can see followers" decision. */
+export async function listFollowers(authorId: bigint) {
+  const connections = await db.connection.findMany({
+    where: { followingid: authorId, connectionstatus: "accepted" },
+    include: {
+      blogger_connection_followeridToblogger: {
+        select: { authorid: true, name: true, username: true, profilepicture: true, bio: true },
+      },
+    },
+    orderBy: { createdat: "desc" },
+  });
+  return connections.map((c) => c.blogger_connection_followeridToblogger);
+}
+
+/** Everyone this blogger follows — public, same visibility as listFollowers. */
+export async function listFollowing(authorId: bigint) {
+  const connections = await db.connection.findMany({
+    where: { followerid: authorId, connectionstatus: "accepted" },
+    include: {
+      blogger_connection_followingidToblogger: {
+        select: { authorid: true, name: true, username: true, profilepicture: true, bio: true },
+      },
+    },
+    orderBy: { createdat: "desc" },
+  });
+  return connections.map((c) => c.blogger_connection_followingidToblogger);
+}
+
+/**
+ * "People you might follow" — recently active bloggers excluding the
+ * profile owner and anyone the viewer already follows. No relevance
+ * ranking (shared categories/keywords) yet — just recency, same caveat as
+ * getRelatedPosts in post-service.ts.
+ */
 export async function listRelatedUsers(username: string, viewerId: bigint | undefined, limit = 6) {
   const target = await db.blogger.findUnique({ where: { username }, select: { authorid: true } });
   if (!target) return [];

@@ -3,7 +3,7 @@ import { z } from "zod";
 export const createCommunitySchema = z.object({
   name: z.string().min(1).max(255),
   communitydescription: z.string().min(1).max(1000),
-  communityicon: z.string().url().max(255).optional(),
+  communityicon: z.url().max(255).optional(),
 });
 export type CreateCommunityInput = z.infer<typeof createCommunitySchema>;
 
