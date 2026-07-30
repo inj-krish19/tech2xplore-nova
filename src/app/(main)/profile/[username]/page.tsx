@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getProfileByUsername, listRelatedUsers } from "@/lib/services/user-service";
@@ -36,7 +37,16 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
                     </div>
                     <div>
                         <h1 className="font-display text-xl font-semibold">{profile.name ?? profile.username}</h1>
-                        <p className="text-sm text-muted-foreground">@{profile.username} &middot; {profile.followersCount} followers</p>
+                        <p className="text-sm text-muted-foreground">
+                            @{profile.username} &middot;{" "}
+                            <Link href={`/profile/${profile.username}/followers`} className="hover:text-accent">
+                                {profile.followersCount} followers
+                            </Link>
+                            {" "}&middot;{" "}
+                            <Link href={`/profile/${profile.username}/following`} className="hover:text-accent">
+                                Followings
+                            </Link>
+                        </p>
                     </div>
                 </div>
 
