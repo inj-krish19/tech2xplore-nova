@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { FiCornerDownRight, FiSend, FiTrash2 } from "react-icons/fi";
 import { apiFetch } from "@/lib/api-client";
@@ -174,7 +175,20 @@ function CommentBranch({
             <div className="min-w-0 flex-1">
                 <div className="rounded-md border border-border bg-card p-3">
                     <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">{node.author.name ?? node.author.username}</p>
+                        <Link
+                            href={`/profile/${node.author.username}`}
+                            className="flex items-center gap-2 text-sm font-medium hover:text-accent"
+                        >
+                            <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-[10px] font-medium text-accent-foreground">
+                                {node.author.profilepicture ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={node.author.profilepicture} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                    (node.author.name ?? node.author.username).charAt(0).toUpperCase()
+                                )}
+                            </div>
+                            {node.author.name ?? node.author.username}
+                        </Link>
                         <span className="text-xs text-muted-foreground">{new Date(node.createdAt).toLocaleDateString()}</span>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">{node.comment}</p>
