@@ -202,3 +202,58 @@ export async function listRelatedUsers(username: string, viewerId: bigint | unde
     take: limit,
   });
 }
+
+/**
+ * Admin panel listing — paginated, search across name/username/email.
+ * Includes bloggerstatus and post count so the admin table can show
+ * who's banned and how active they've been, without a second round trip.
+ */
+export async function adminListUsers(page: number, pageSize: number, search?: string) {
+  const where = search
+    ? {
+        OR: [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { username: { contains: search, mode: "insensitive" as const } },
+          { email: { contains: search, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+
+  const [items, total] = await Promise.all([
+    db.blogger.findMany({
+      where,
+      select: {
+        authorid: true,
+        name: true,
+        username: true,
+        email: true,
+        profilepicture: true,
+        bloggerstatus: true,
+        authprovider: true,
+        createdat: true,
+        _count: { select: { post: true } },
+      },
+      orderBy: { createdat: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    db.blogger.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}
+
+/**
+ * Ban/unban/reinstate — writes `bloggerstatus` directly (active/inactive/
+ * banned). This does NOT revoke sessions or block existing JWTs; if a
+ * banned user's session is still valid until it expires, enforcing the
+ * ban on every request needs a check in `proxy.ts` or `auth.ts` — flagging
+ * as a follow-up, not built in this pass.
+ */
+export async function setBloggerStatus(authorId: bigint, status: "active" | "inactive" | "banned") {
+  return db.blogger.update({
+    where: { authorid: authorId },
+    data: { bloggerstatus: status },
+    select: { authorid: true, username: true, bloggerstatus: true },
+  });
+}
