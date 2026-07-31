@@ -71,3 +71,38 @@ export async function listCommunityMembers(communityId: bigint) {
     orderBy: { joinedat: "asc" },
   });
 }
+
+/** Admin panel listing — paginated, optional name search, on top of the existing member-count include. */
+export async function adminListCommunities(page: number, pageSize: number, search?: string) {
+  const where = search ? { name: { contains: search, mode: "insensitive" as const } } : {};
+
+  const [items, total] = await Promise.all([
+    db.community.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: { createdat: "desc" },
+      include: { _count: { select: { membership: true } } },
+    }),
+    db.community.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}
+
+/**
+ * Admin takedown. Assumption (flagging, not confirmed): blocks with an
+ * `in_use` status if the community still has members, same pattern as
+ * category/keyword deletion, rather than cascade-deleting memberships.
+ * If you'd rather admin takedown force-remove members too, say so and
+ * this becomes a `$transaction` that clears `membership` rows first.
+ */
+export async function deleteCommunity(
+  communityId: bigint
+): Promise<{ status: "deleted" } | { status: "in_use"; memberCount: number }> {
+  const memberCount = await db.membership.count({ where: { communityid: communityId } });
+  if (memberCount > 0) return { status: "in_use", memberCount };
+
+  await db.community.delete({ where: { communityid: communityId } });
+  return { status: "deleted" };
+}
