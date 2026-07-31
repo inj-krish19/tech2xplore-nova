@@ -17,7 +17,9 @@ export function PostModerationTable({ posts: initialPosts }: { posts: Moderation
     const updateStatus = async (id: string, poststatus: ModerationPost["status"]) => {
         setBusyId(id);
         try {
-            const res = await fetch(`/api/posts/${id}`, {
+            // Admin-only route — the public /api/posts/[id] PATCH would 403
+            // here unless the admin happens to be the post's own author.
+            const res = await fetch(`/api/admin/posts/${id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ poststatus }),
@@ -34,7 +36,8 @@ export function PostModerationTable({ posts: initialPosts }: { posts: Moderation
         if (!confirm("Delete this post permanently?")) return;
         setBusyId(id);
         try {
-            const res = await fetch(`/api/posts/${id}`, { method: "DELETE" });
+            // Admin-only route — same reasoning as updateStatus above.
+            const res = await fetch(`/api/admin/posts/${id}`, { method: "DELETE" });
             if (res.ok) {
                 setPosts((prev) => prev.filter((p) => p.id !== id));
             }

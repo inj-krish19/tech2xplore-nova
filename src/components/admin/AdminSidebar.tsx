@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 const NAV_ITEMS = [
     { href: "/admin", label: "Overview" },
     { href: "/admin/posts", label: "Posts" },
     { href: "/admin/users", label: "Users" },
     { href: "/admin/categories", label: "Categories" },
+    { href: "/admin/keywords", label: "Keywords" },
+    { href: "/admin/communities", label: "Communities" },
 ];
 
 export function AdminSidebar() {
@@ -28,6 +31,11 @@ export function AdminSidebar() {
                     </Link>
                 );
             })}
+
+            <div className="mt-auto flex items-center justify-between border-t border-border pt-4">
+                <span className="text-xs text-muted-foreground">Theme</span>
+                <ThemeToggle />
+            </div>
         </nav>
     );
 }
