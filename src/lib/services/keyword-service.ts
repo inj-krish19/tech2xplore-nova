@@ -56,3 +56,37 @@ export async function recentAuthorsByKeyword(keywordId: bigint, limit = 8) {
   }
   return authors;
 }
+
+/** Admin panel listing — paginated, optional name search, includes how many posts use each keyword. */
+export async function adminListKeywords(page: number, pageSize: number, search?: string) {
+  const where = search ? { name: { contains: search, mode: "insensitive" as const } } : {};
+
+  const [items, total] = await Promise.all([
+    db.keyword.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: { createdat: "desc" },
+      include: { _count: { select: { keywordassignment: true } } },
+    }),
+    db.keyword.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}
+
+/**
+ * Admin takedown. Same NoAction-FK reasoning as `deleteCategory` —
+ * `keywordassignment.keywordid` blocks the delete at the DB level if
+ * any post still uses this keyword, so check first and return a clean
+ * `in_use` status instead of letting that hit as a raw 500.
+ */
+export async function deleteKeyword(
+  keywordId: bigint
+): Promise<{ status: "deleted" } | { status: "in_use"; postCount: number }> {
+  const postCount = await db.keywordassignment.count({ where: { keywordid: keywordId } });
+  if (postCount > 0) return { status: "in_use", postCount };
+
+  await db.keyword.delete({ where: { keywordid: keywordId } });
+  return { status: "deleted" };
+}

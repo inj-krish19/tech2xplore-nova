@@ -11,3 +11,10 @@ export const listKeywordPostsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(10),
 });
+
+export const adminListKeywordsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(10),
+  search: z.string().max(255).optional(),
+});
+export type AdminListKeywordsQuery = z.infer<typeof adminListKeywordsQuerySchema>;
