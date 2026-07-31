@@ -59,3 +59,37 @@ export async function recentAuthorsByCategory(categoryId: bigint, limit = 8) {
   }
   return authors;
 }
+
+/** Admin panel listing — paginated, optional name search, includes how many posts reference each category. */
+export async function adminListCategories(page: number, pageSize: number, search?: string) {
+  const where = search ? { name: { contains: search, mode: "insensitive" as const } } : {};
+
+  const [items, total] = await Promise.all([
+    db.category.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: { createdat: "desc" },
+      include: { _count: { select: { postcategoryassignment: true } } },
+    }),
+    db.category.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}
+
+/**
+ * Admin takedown. `postcategoryassignment.categoryid` is a NoAction FK,
+ * so deleting a category still referenced by posts would 500 on the
+ * constraint — this blocks with an `in_use` status instead so the admin
+ * UI can show a clear reason rather than a raw DB error.
+ */
+export async function deleteCategory(
+  categoryId: bigint
+): Promise<{ status: "deleted" } | { status: "in_use"; postCount: number }> {
+  const postCount = await db.postcategoryassignment.count({ where: { categoryid: categoryId } });
+  if (postCount > 0) return { status: "in_use", postCount };
+
+  await db.category.delete({ where: { categoryid: categoryId } });
+  return { status: "deleted" };
+}
