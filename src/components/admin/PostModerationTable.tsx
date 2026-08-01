@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface ModerationPost {
     id: string;
@@ -12,6 +12,14 @@ export interface ModerationPost {
 
 export function PostModerationTable({ posts: initialPosts }: { posts: ModerationPost[] }) {
     const [posts, setPosts] = useState(initialPosts);
+
+    // Parent re-renders with a fresh initialPosts prop after router.refresh()
+    // (pagination/search/status changes) — useState's initial value only
+    // applies on mount, so without this the table keeps showing whatever
+    // it first mounted with even though the URL and server data moved on.
+    useEffect(() => {
+        setPosts(initialPosts);
+    }, [initialPosts]);
     const [busyId, setBusyId] = useState<string | null>(null);
 
     const updateStatus = async (id: string, poststatus: ModerationPost["status"]) => {

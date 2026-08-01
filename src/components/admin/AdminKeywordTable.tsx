@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export interface AdminKeywordRow {
@@ -13,6 +13,14 @@ export interface AdminKeywordRow {
 export function AdminKeywordTable({ keywords: initial }: { keywords: AdminKeywordRow[] }) {
     const router = useRouter();
     const [keywords, setKeywords] = useState(initial);
+
+    // Parent re-renders with a fresh initial prop after router.refresh()
+    // (pagination/search/status changes) — useState's initial value only
+    // applies on mount, so without this the table keeps showing whatever
+    // it first mounted with even though the URL and server data moved on.
+    useEffect(() => {
+        setKeywords(initial);
+    }, [initial]);
     const [busyId, setBusyId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
