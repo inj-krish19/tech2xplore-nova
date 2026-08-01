@@ -17,7 +17,11 @@ export function AdminSidebar() {
     const pathname = usePathname();
 
     return (
-        <nav className="flex w-56 shrink-0 flex-col gap-1 border-r border-border p-4">
+        // sticky + h-screen + its own overflow-y-auto is what actually
+        // pins this to the left while the <main> content scrolls — a
+        // plain flex child with no sticky/height combo (the previous
+        // version) just scrolls away with the page.
+        <nav className="sticky top-0 flex h-screen w-56 shrink-0 flex-col gap-1 overflow-y-auto border-r border-border p-4">
             {NAV_ITEMS.map((item) => {
                 const active = pathname === item.href;
                 return (
