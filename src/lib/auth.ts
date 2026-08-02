@@ -56,10 +56,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     LinkedIn({
       clientId: process.env.LINKEDIN_CLIENT_ID,
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
+      authorization: {
+        params: {
+          scope: "openid profile email w_organization_social w_member_social rw_organization_admin",
+        },
+      },
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       // Credentials flow already fully resolved a real blogger in `authorize`.
       if (account?.provider === "credentials") return true;
 
@@ -67,29 +72,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       const existing = await db.blogger.findUnique({ where: { email: user.email } });
 
+      let authorId: bigint;
+      let username: string;
+
       if (existing) {
         if (existing.bloggerstatus === "banned") return false;
-        // Existing account (whether it originally signed up via credentials
-        // or another provider) — email match is enough to let this through.
-        user.id = existing.authorid.toString();
-        (user as { username?: string }).username = existing.username;
-        return true;
+        authorId = existing.authorid;
+        username = existing.username;
+      } else {
+        // First time we've seen this email — provision a blogger row.
+        const generatedUsername = await generateUniqueUsername(user.email);
+        const created = await db.blogger.create({
+          data: {
+            name: user.name ?? generatedUsername,
+            email: user.email,
+            username: generatedUsername,
+            password: null,
+            profilepicture: user.image ?? null,
+            authprovider: account?.provider === "google" ? "google" : "linkedin",
+          },
+        });
+        authorId = created.authorid;
+        username = created.username;
       }
 
-      // First time we've seen this email — provision a blogger row.
-      const username = await generateUniqueUsername(user.email);
-      const created = await db.blogger.create({
-        data: {
-          name: user.name ?? username,
-          email: user.email,
-          username,
-          password: null,
-          profilepicture: user.image ?? null,
-          authprovider: account?.provider === "google" ? "google" : "linkedin",
-        },
-      });
-      user.id = created.authorid.toString();
-      (user as { username?: string }).username = created.username;
+      // Persist the LinkedIn access token/expiry/urn — this only happens
+      // on the signIn callback because that's the one place account and
+      // profile (the raw OAuth token response + userinfo) are available;
+      // neither survives into the jwt/session callbacks unless copied
+      // through the token first, which we don't need here since these
+      // three live in the DB, not the session.
+      if (account?.provider === "linkedin") {
+        await db.blogger.update({
+          where: { authorid: authorId },
+          data: {
+            linkedinaccesstoken: account.access_token ?? null,
+            linkedintokenexpiresat: account.expires_at ? new Date(account.expires_at * 1000) : null,
+            // LinkedIn's OIDC userinfo returns `sub` as the member's raw
+            // ID — urn:li:person:{sub} is LinkedIn's documented URN format
+            // for that ID, matching how linkedinurn is used elsewhere
+            // (hasLinkedInConnected in user-service.ts just checks it's
+            // non-null, so the exact format only matters if something
+            // later calls the LinkedIn API with this urn directly).
+            linkedinurn: profile?.sub ? `urn:li:person:${profile.sub}` : null,
+          },
+        });
+      }
+
+      user.id = authorId.toString();
+      (user as { username?: string }).username = username;
       return true;
     },
     async jwt({ token, user }) {

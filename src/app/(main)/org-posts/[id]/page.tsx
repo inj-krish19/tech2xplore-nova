@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getOrgPostById } from "@/lib/services/orgpost-service";
+import { FaLinkedin } from "react-icons/fa";
 
 export default async function OrgPostDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -23,14 +24,27 @@ export default async function OrgPostDetailPage({ params }: { params: Promise<{ 
                     {post.content}
                 </div>
             )}
-            <a
-                href={post.sourceurl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 inline-block text-sm font-medium text-accent hover:opacity-80"
-            >
-                View original source &rarr;
-            </a>
+
+            <div className="flex gap-4">
+                <a
+                    href={post.sourceurl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-6 inline-block text-sm font-medium text-accent hover:opacity-80"
+                >
+                    View original source &rarr;
+                </a>
+                <a
+                    href={post.linkedinurl || post.sourceurl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-row items-center gap-2 mt-6 text-sm font-medium text-accent hover:opacity-80"
+                >
+
+                    <FaLinkedin />
+                    Continue with LinkedIn
+                </a>
+            </div>
         </div>
     );
 }
