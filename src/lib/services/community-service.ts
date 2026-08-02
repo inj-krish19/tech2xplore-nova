@@ -106,3 +106,29 @@ export async function deleteCommunity(
   await db.community.delete({ where: { communityid: communityId } });
   return { status: "deleted" };
 }
+/**
+ * Public community search — name/description match. Same output shape
+ * as listCommunities (includes _count.membership) so the search page's
+ * community results can reuse the communities page's card markup.
+ */
+export async function searchCommunities(query: string, page: number, pageSize: number) {
+  const where = {
+    OR: [
+      { name: { contains: query, mode: "insensitive" as const } },
+      { communitydescription: { contains: query, mode: "insensitive" as const } },
+    ],
+  };
+
+  const [items, total] = await Promise.all([
+    db.community.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: { createdat: "desc" },
+      include: { _count: { select: { membership: true } } },
+    }),
+    db.community.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}

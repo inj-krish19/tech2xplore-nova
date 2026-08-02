@@ -257,3 +257,62 @@ export async function setBloggerStatus(authorId: bigint, status: "active" | "ina
     select: { authorid: true, username: true, bloggerstatus: true },
   });
 }
+/**
+ * Public people search — name/username/bio match. Same output shape as
+ * listDiscoverableUsers (postsCount, likesReceived, isFollowing) so the
+ * search page's people results can reuse the discover page's card
+ * markup without a shape mismatch.
+ */
+export async function searchUsers(query: string, viewerId: bigint | undefined, page: number, pageSize: number) {
+  const where = {
+    ...(viewerId && { authorid: { not: viewerId } }),
+    OR: [
+      { name: { contains: query, mode: "insensitive" as const } },
+      { username: { contains: query, mode: "insensitive" as const } },
+      { bio: { contains: query, mode: "insensitive" as const } },
+    ],
+  };
+
+  const [bloggers, total] = await Promise.all([
+    db.blogger.findMany({
+      where,
+      select: {
+        authorid: true,
+        name: true,
+        username: true,
+        profilepicture: true,
+        bio: true,
+        post: { select: { likes: true } },
+        _count: { select: { post: true } },
+      },
+      orderBy: { createdat: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    db.blogger.count({ where }),
+  ]);
+
+  const followingIds = viewerId
+    ? new Set(
+        (
+          await db.connection.findMany({
+            where: { followerid: viewerId, connectionstatus: "accepted" },
+            select: { followingid: true },
+          })
+        ).map((c) => c.followingid.toString())
+      )
+    : new Set<string>();
+
+  const items = bloggers.map((b) => ({
+    authorid: b.authorid,
+    name: b.name,
+    username: b.username,
+    profilepicture: b.profilepicture,
+    bio: b.bio,
+    postsCount: b._count.post,
+    likesReceived: b.post.reduce((sum, p) => sum + p.likes, 0),
+    isFollowing: followingIds.has(b.authorid.toString()),
+  }));
+
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}
