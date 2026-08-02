@@ -46,7 +46,7 @@ export async function getPostById(articleId: bigint) {
     include: {
       blogger: { select: { authorid: true, name: true, username: true, profilepicture: true } },
       postcategoryassignment: { include: { category: true } },
-      keywordassignment: { include: { keyword: true } }, 
+      keywordassignment: { include: { keyword: true } },
     },
   });
 }
@@ -60,19 +60,39 @@ export async function incrementViewCount(articleId: bigint) {
 }
 
 export async function listPosts(query: ListPostsQuery) {
-  const { page, pageSize, status, authorId, categoryId, search } = query;
+  const { page, pageSize, status, authorId, categoryId, keywordId, search } = query;
 
   const where = {
     ...(status && { poststatus: status }),
     ...(authorId && { primaryauthor: BigInt(authorId) }),
+    ...(categoryId && {
+      postcategoryassignment: { some: { categoryid: BigInt(categoryId) } },
+    }),
+    // Was accepted by the query schema but silently ignored here before —
+    // feed/page.tsx has been passing it through an `as never` cast
+    // because this where clause never read it.
+    ...(keywordId && {
+      keywordassignment: { some: { keywordid: BigInt(keywordId) } },
+    }),
     ...(search && {
+      // A search term now also matches a category/keyword *name* the
+      // post is tagged with, not just its own title/description — e.g.
+      // searching "react" surfaces posts tagged with a "React" keyword
+      // even if that word never appears in the post's own text.
       OR: [
         { title: { contains: search, mode: "insensitive" as const } },
         { description: { contains: search, mode: "insensitive" as const } },
+        {
+          postcategoryassignment: {
+            some: { category: { name: { contains: search, mode: "insensitive" as const } } },
+          },
+        },
+        {
+          keywordassignment: {
+            some: { keyword: { name: { contains: search, mode: "insensitive" as const } } },
+          },
+        },
       ],
-    }),
-    ...(categoryId && {
-      postcategoryassignment: { some: { categoryid: BigInt(categoryId) } },
     }),
   };
 

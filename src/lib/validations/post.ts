@@ -20,6 +20,7 @@ export const listPostsQuerySchema = z.object({
   status: postStatusSchema.optional(),
   authorId: z.string().optional(),
   categoryId: z.string().optional(),
+  keywordId: z.string().optional(),
   search: z.string().max(255).optional(),
 });
 export type ListPostsQuery = z.infer<typeof listPostsQuerySchema>;
