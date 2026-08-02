@@ -154,3 +154,25 @@ npx prisma generate
 
 This is additive-only (new nullable-safe column with a default) — no
 backfill needed, no existing column touched.
+
+---
+
+# Schema change: post.shares
+
+```sql
+-- Adds the columns the LinkedIn automation pipeline needs to persist a
+-- full record of what it fetched/generated/published, instead of that
+-- data being discarded after each cron run.
+--
+-- Assumption (flagging, not confirmed): orgpost is currently empty —
+-- README describes it as unbuilt/unpopulated until this automation
+-- pipeline runs. `provider` is added NOT NULL on that basis. If the
+-- table already has rows, run this as two steps instead: add it
+-- nullable, backfill a value, then ALTER COLUMN ... SET NOT NULL.
+
+ALTER TABLE "orgpost"
+  ADD COLUMN "provider" VARCHAR(20) NOT NULL,
+  ADD COLUMN "description" TEXT,
+  ADD COLUMN "linkedinpostid" VARCHAR(255),
+  ADD COLUMN "linkedinurl" VARCHAR(500);
+```

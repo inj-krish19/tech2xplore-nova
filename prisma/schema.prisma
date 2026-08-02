@@ -9,14 +9,18 @@ datasource db {
 }
 
 model orgpost {
-  orgpostid   BigInt    @id @default(autoincrement())
-  sourceurl   String    @unique @db.VarChar(500)
-  title       String?   @db.VarChar(255)
-  content     String?
-  coverimage  String?   @db.VarChar(500)
-  publishedat DateTime? @db.Timestamp(6)
-  fetchedat   DateTime  @default(now()) @db.Timestamp(6)
-  updatedat   DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  orgpostid      BigInt    @id @default(autoincrement())
+  sourceurl      String    @unique @db.VarChar(500)
+  title          String?   @db.VarChar(255)
+  content        String?
+  coverimage     String?   @db.VarChar(500)
+  publishedat    DateTime? @db.Timestamp(6)
+  fetchedat      DateTime  @default(now()) @db.Timestamp(6)
+  updatedat      DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  description    String?
+  linkedinpostid String?   @db.VarChar(255)
+  linkedinurl    String?   @db.VarChar(500)
+  provider       String    @db.VarChar(20)
 }
 
 model blogger {
