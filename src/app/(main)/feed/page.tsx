@@ -5,12 +5,6 @@ import { listPosts } from "@/lib/services/post-service";
 
 const PAGE_SIZE = 10;
 
-/**
- * ASSUMED: listPosts accepts { categoryId?, keywordId?, page?, pageSize? }
- * and returns { posts, total } — adjust the call below to your real
- * signature if it differs (this was a guess based on API_ENDPOINTS.md
- * supporting both filters and pagination per the roadmap note).
- */
 export default async function FeedPage({
     searchParams,
 }: {
@@ -19,8 +13,21 @@ export default async function FeedPage({
     const { categoryId, keywordId, page: pageParam } = await searchParams;
     const page = Number(pageParam) || 1;
 
-    const result = await safeListPosts({ categoryId, keywordId, page, pageSize: PAGE_SIZE });
-    const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+    // listPosts now really supports keywordId (previously accepted by the
+    // query schema but silently ignored in the where clause) — the
+    // `as never` cast this used to need is gone, along with the manual
+    // total/totalPages math this file was doing itself.
+    //
+    // Also newly added: status: "published". This page had no status
+    // filter at all before, meaning drafts and archived posts were
+    // showing up in the public feed.
+    const result = await listPosts({
+        categoryId,
+        keywordId,
+        page,
+        pageSize: PAGE_SIZE,
+        status: "published",
+    }).catch(() => ({ items: [], total: 0, page: 1, pageSize: PAGE_SIZE, totalPages: 1 }));
 
     return (
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
@@ -31,13 +38,13 @@ export default async function FeedPage({
             </div>
 
             <div className="mt-6 flex flex-col gap-4">
-                {!result.posts || result.posts.length === 0 ? (
+                {result.items.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No posts match these filters.</p>
                 ) : (
-                    result.posts.map((post) => (
+                    result.items.map((post) => (
                         <Link
-                            key={post.id}
-                            href={`/post/${post.id}`}
+                            key={post.articleid.toString()}
+                            href={`/post/${post.articleid}`}
                             className="block rounded-xl border border-border bg-card p-5 hover:border-accent"
                         >
                             <p className="font-display text-lg font-semibold">{post.title}</p>
@@ -47,42 +54,7 @@ export default async function FeedPage({
                 )}
             </div>
 
-            <Pagination page={page} totalPages={totalPages} />
+            <Pagination page={page} totalPages={result.totalPages} />
         </div>
     );
-}
-
-async function safeListPosts(args: {
-    categoryId?: string;
-    keywordId?: string;
-    page: number;
-    pageSize: number;
-}): Promise<{
-    posts: Array<{ id: string; title: string; description: string }>;
-    total: number;
-}> {
-    try {
-        const result = await listPosts(args as never) as {
-            items: Array<{
-                articleid: bigint;
-                title: string;
-                description: string;
-            }>;
-            total: number;
-        };
-
-        return {
-            posts: result.items.map(post => ({
-                id: post.articleid.toString(),
-                title: post.title,
-                description: post.description,
-            })),
-            total: result.total,
-        };
-    } catch {
-        return {
-            posts: [],
-            total: 0,
-        };
-    }
 }

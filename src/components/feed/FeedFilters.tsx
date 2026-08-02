@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
+import { HeaderSearch } from "@/components/search/HeaderSearch";
 
 // Real PK names per schema.prisma — categoryid/keywordid, not a shared "id".
 // Both PKs are BigInt server-side; expect them serialized to string over JSON.
@@ -84,6 +85,8 @@ export function FeedFilters() {
                     <option key={k.keywordid} value={k.keywordid}>{k.name}</option>
                 ))}
             </select>
+
+            <HeaderSearch className="w-40 lg:w-56" />
 
             {(searchParams.get("categoryId") || searchParams.get("keywordId")) && (
                 <button
