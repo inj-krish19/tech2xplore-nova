@@ -21,3 +21,27 @@ export async function requireAdmin() {
   if (!isAdminEmail(session.user.email)) throw new ForbiddenError("Admin only");
   return session;
 }
+
+/**
+ * Basic Auth against a single fixed identity from env — deliberately NOT
+ * requireAdmin()/session-based, because this guards routes a cron job
+ * calls directly (no browser, no NextAuth session to check). Mirrors the
+ * legacy standalone automation script's auth model one-for-one.
+ */
+export async function requireCronBasicAuth(req: Request) {
+  const header = req.headers.get("authorization");
+  if (!header) throw new UnauthorizedError("Missing credentials");
+
+  const encoded = header.split(" ")[1] ?? "";
+  const decoded = Buffer.from(encoded, "base64").toString();
+  const [username, password] = decoded.split(":");
+
+  const expectedUsername = process.env.LINKEDIN_AUTOMATION_USERNAME ?? "";
+  const expectedPassword = process.env.LINKEDIN_AUTOMATION_PASSWORD ?? "";
+
+  // Both must match — not `!==` on the reject side, which is the bug
+  // fixed in the standalone script's version of this same check.
+  if (username !== expectedUsername || password !== expectedPassword) {
+    throw new UnauthorizedError("Invalid credentials");
+  }
+}
