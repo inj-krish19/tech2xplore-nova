@@ -25,7 +25,7 @@ const LINKEDIN_STATS = [
     { value: "56.6K+", label: "Impressions (YTD 2026)" },
     { value: "800+", label: "Reactions" },
     { value: "50+", label: "Comments" },
-    { value: "300+", label: "Followers" },
+    { value: "325+", label: "Followers" },
 ];
 
 export function StatsSection() {
