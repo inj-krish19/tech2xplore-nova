@@ -302,7 +302,7 @@ export default async function HomePage() {
                 Create your account
               </Link>
               <a
-                href="mailto:tech2xplore@gmail.com"
+                href="mailto:techtoxplore@gmail.com"
                 className="rounded-md border border-border px-6 py-3 text-sm font-medium hover:bg-muted"
               >
                 Talk to us about a project
