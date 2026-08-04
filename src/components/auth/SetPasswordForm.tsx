@@ -8,7 +8,7 @@ export function SetPasswordForm() {
     const [error, setError] = useState<string | null>(null);
     const [done, setDone] = useState(false);
 
-    async function handleSubmit(e: React.FormEvent) {
+    async function handleSubmit(e: React.SubmitEvent) {
         e.preventDefault();
         setLoading(true);
         setError(null);

@@ -20,7 +20,7 @@ export default function NewPostPage() {
 
     const canSubmit = title.trim().length > 0 && content.trim().length > 0 && !submitting;
 
-    async function handleSubmit(e: React.FormEvent) {
+    async function handleSubmit(e: React.SubmitEvent) {
         e.preventDefault();
         if (!canSubmit) return;
         setSubmitting(true);

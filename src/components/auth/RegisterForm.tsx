@@ -15,7 +15,7 @@ export function RegisterForm() {
     const [error, setError] = useState<string | null>(null);
     const [sent, setSent] = useState(false);
 
-    async function handleSubmit(e: React.FormEvent) {
+    async function handleSubmit(e: React.SubmitEvent) {
         e.preventDefault();
         setLoading(true);
         setError(null);

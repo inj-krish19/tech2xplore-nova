@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { FiSearch } from "react-icons/fi";
 
@@ -8,7 +8,7 @@ export function HeaderSearch({ className = "", onSubmit }: { className?: string;
     const router = useRouter();
     const [value, setValue] = useState("");
 
-    const submit = (e: FormEvent) => {
+    const submit = (e: SubmitEvent) => {
         e.preventDefault();
         const trimmed = value.trim();
         if (!trimmed) return;
