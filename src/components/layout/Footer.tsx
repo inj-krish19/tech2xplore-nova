@@ -29,7 +29,9 @@ const COLUMNS = [
             { href: "/services", label: "Services" },
             { href: "/case-studies", label: "Case studies" },
             { href: "/pricing", label: "Pricing" },
+            { href: "/process", label: "How we work" },
             { href: "/team", label: "Meet the team" },
+            { href: "/careers", label: "Careers" },
         ],
     },
     {
@@ -38,6 +40,7 @@ const COLUMNS = [
             { href: "/testimonials", label: "Testimonials" },
             { href: "/faq", label: "FAQ" },
             { href: "/contact", label: "Get a quote" },
+            { href: "/status", label: "Status" },
         ],
     },
     {
@@ -100,8 +103,8 @@ export function Footer() {
 
                 <div className="mt-10 flex flex-col gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                     <p>&copy; {new Date().getFullYear()} Tech2Xplore. All rights reserved.</p>
-                    <a href="mailto:techtoxplore@gmail.com" className="hover:text-foreground">
-                        techtoxplore@gmail.com
+                    <a href="mailto:tech2xplore@gmail.com" className="hover:text-foreground">
+                        tech2xplore@gmail.com
                     </a>
                 </div>
             </div>

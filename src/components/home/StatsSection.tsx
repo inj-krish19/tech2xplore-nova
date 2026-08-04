@@ -15,8 +15,8 @@ import { WordsPullUp } from "@/components/motion/WordsPullUp";
  * unverifiable X/10 score.
  */
 const COMPANY_STATS = [
-    { icon: FiUsers, value: "5+", label: "Clients served" },
-    { icon: FiFolder, value: "10+", label: "Projects delivered" },
+    { icon: FiUsers, value: "10+", label: "Clients served" },
+    { icon: FiFolder, value: "25+", label: "Projects delivered" },
     { icon: FiAward, value: "10+", label: "Team members across disciplines" },
     { icon: FiTrendingUp, value: "90%", label: "On-time delivery rate" }, // TODO: replace with real figure
 ];
