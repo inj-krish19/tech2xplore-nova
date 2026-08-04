@@ -2,7 +2,7 @@
 
 import { useState, type SubmitEvent } from "react";
 
-const PROJECT_TYPES = ["Web/software development", "Consulting", "Digital marketing", "Platform promotion", "Something else"];
+const PROJECT_TYPES = ["Web/software development", "Consulting", "Digital marketing", "Platform promotion", "Career interest", "Something else"];
 const BUDGET_RANGES = ["Not sure yet", "Under $2k", "$2k–$10k", "$10k–$50k", "$50k+", "Ongoing retainer"];
 const TIMELINES = ["ASAP", "Within a month", "1–3 months", "3+ months", "Just exploring"];
 
@@ -40,8 +40,8 @@ export function ContactForm() {
             }
 
             setStatus("sent");
-        } catch (err) {
-            console.log(err);
+            e.currentTarget.reset();
+        } catch {
             setErrorMessage("Something went wrong — please try again.");
             setStatus("error");
         }
