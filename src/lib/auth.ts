@@ -134,6 +134,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.username = token.username as string;
+
+        // A JWT issued before a ban is cryptographically still valid
+        // until its 30-day expiry — authorize() and the OAuth signIn
+        // callback both block a banned user from getting a *new*
+        // session, but neither of those runs again for a session that
+        // already exists. This is the one callback that runs on every
+        // session read (every requireSession()/requireAdmin() call,
+        // and proxy.ts's own auth() wrapper), so it's the right place
+        // to close that gap — re-check status here instead.
+        //
+        // This can't destroy the underlying JWT cookie itself (no
+        // adapter/session-invalidation store exists in this JWT-only
+        // setup), so a banned user's browser still holds a "valid"
+        // cookie — but every server-side check that goes through
+        // requireSession() (which is nearly everything) now treats
+        // them as signed out, since it only checks session.user.id.
+        if (token.id) {
+          const blogger = await db.blogger.findUnique({
+            where: { authorid: BigInt(token.id as string) },
+            select: { bloggerstatus: true },
+          });
+          if (blogger?.bloggerstatus === "banned") {
+            session.user.id = "";
+          }
+        }
       }
       return session;
     },

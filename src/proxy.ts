@@ -13,7 +13,11 @@ export const proxy = auth((req) => {
 
   if (!isProtected) return NextResponse.next();
 
-  if (!req.auth) {
+  if (!req.auth || !req.auth.user?.id) {
+    // A banned user reaches this branch too — auth.ts's session callback
+    // empties user.id for a banned account, but the session object
+    // itself is still a truthy value, so `!req.auth` alone wouldn't
+    // have caught it.
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
