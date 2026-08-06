@@ -48,6 +48,14 @@ const COLUMNS = [
         links: [
             { href: "/privacy", label: "Privacy policy" },
             { href: "/terms", label: "Terms of service" },
+            { href: "/cookies", label: "Cookie policy" },
+            { href: "/nda", label: "NDA" },
+            { href: "/msa", label: "Service agreement" },
+            { href: "/refund-policy", label: "Refund policy" },
+            { href: "/acceptable-use", label: "Acceptable use" },
+            { href: "/copyright", label: "Copyright & DMCA" },
+            { href: "/dpa", label: "Data processing" },
+            { href: "/accessibility", label: "Accessibility" },
         ],
     },
 ];
@@ -103,8 +111,8 @@ export function Footer() {
 
                 <div className="mt-10 flex flex-col gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                     <p>&copy; {new Date().getFullYear()} Tech2Xplore. All rights reserved.</p>
-                    <a href="mailto:tech2xplore@gmail.com" className="hover:text-foreground">
-                        tech2xplore@gmail.com
+                    <a href="mailto:techtoxplore@gmail.com" className="hover:text-foreground">
+                        techtoxplore@gmail.com
                     </a>
                 </div>
             </div>
