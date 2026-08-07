@@ -3,23 +3,25 @@ import { db } from "@/lib/db";
 export type ReactionType = "like" | "dislike";
 
 /**
- * `postinteraction` has no unique constraint on (articleid, authorid) —
- * nothing in the DB itself stops a user from reacting twice. Uniqueness
- * is enforced here at the app layer instead (find-then-write). Under
- * true concurrent double-clicks this has a small race window; a real
- * fix is a DB unique constraint, which needs the production-team
- * sign-off the standing instruction requires — not added here.
+ * `postinteraction` now has a real DB unique constraint on
+ * (articleid, authorid) — findFirst()-then-write is replaced with
+ * findUnique() against that constraint's compound key
+ * (articleid_authorid, Prisma's default name for it), closing the small
+ * race window a concurrent double-click could hit before. The
+ * migration that added it also deduped any rows the old race window may
+ * have already produced — see migrate-reactions-comments.sql.
  *
- * Also intentionally NOT wrapped in db.$transaction — batch/interactive
+ * Still intentionally NOT wrapped in db.$transaction — batch/interactive
  * transactions have already caused "unable to start a transaction"
  * failures on this project's pooled connection (see the earlier
  * listPosts fix). Sequential calls avoid that at the cost of a
  * theoretical inconsistency window between the interaction write and
- * the post counter update.
+ * the post counter update — smaller and different from the race this
+ * migration closes, and not fixed by it.
  */
 export async function reactToPost(authorId: bigint, articleId: bigint, type: ReactionType) {
-  const existing = await db.postinteraction.findFirst({
-    where: { articleid: articleId, authorid: authorId },
+  const existing = await db.postinteraction.findUnique({
+    where: { articleid_authorid: { articleid: articleId, authorid: authorId } },
   });
 
   if (existing && existing.reactiontype === type) {
@@ -60,8 +62,8 @@ export async function reactToPost(authorId: bigint, articleId: bigint, type: Rea
 }
 
 export async function removeReaction(authorId: bigint, articleId: bigint) {
-  const existing = await db.postinteraction.findFirst({
-    where: { articleid: articleId, authorid: authorId },
+  const existing = await db.postinteraction.findUnique({
+    where: { articleid_authorid: { articleid: articleId, authorid: authorId } },
   });
   if (!existing) {
     return db.post.findUnique({ where: { articleid: articleId }, select: { likes: true, dislikes: true } });
@@ -85,8 +87,8 @@ export async function removeReaction(authorId: bigint, articleId: bigint) {
  * two functions above.
  */
 export async function getUserReaction(authorId: bigint, articleId: bigint): Promise<ReactionType | null> {
-  const existing = await db.postinteraction.findFirst({
-    where: { articleid: articleId, authorid: authorId },
+  const existing = await db.postinteraction.findUnique({
+    where: { articleid_authorid: { articleid: articleId, authorid: authorId } },
     select: { reactiontype: true },
   });
   return existing?.reactiontype ?? null;
