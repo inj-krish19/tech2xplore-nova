@@ -170,6 +170,7 @@ model postcomment {
   authorid          BigInt
   parentcommentid   BigInt?
   commenttype       post_comment_enum? @default(comment)
+  deletedat         DateTime?          @db.Timestamp(6)
   postcomment       postcomment?       @relation("postcommentTopostcomment", fields: [parentcommentid], references: [postcommentid], onDelete: NoAction, onUpdate: NoAction, map: "fk8wxoy7hfdkx5usaek7fbkxsqx")
   other_postcomment postcomment[]      @relation("postcommentTopostcomment")
   blogger           blogger            @relation(fields: [authorid], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fk9c0h4tkrj6qb538isudvw9w3v")
@@ -184,6 +185,8 @@ model postinteraction {
   reactiontype   reaction_enum?
   blogger        blogger        @relation(fields: [authorid], references: [authorid], onDelete: NoAction, onUpdate: NoAction, map: "fkc5upfiah5mo4afqy8dq6i9oa")
   post           post           @relation(fields: [articleid], references: [articleid], onDelete: NoAction, onUpdate: NoAction, map: "fkfxk1fss8hjflxemtl5fq1f12r")
+
+  @@unique([articleid, authorid])
 }
 
 model suggestion {

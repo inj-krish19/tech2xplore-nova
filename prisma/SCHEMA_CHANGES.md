@@ -176,3 +176,35 @@ ALTER TABLE "orgpost"
   ADD COLUMN "linkedinpostid" VARCHAR(255),
   ADD COLUMN "linkedinurl" VARCHAR(500);
 ```
+
+---
+
+# Schema change: post.comments and post.interaction
+
+## -- 1. postinteraction: add a unique constraint on (articleid, authorid).
+
+```sql
+-- The race window this closes may have already produced duplicate rows
+-- in production — adding the constraint directly would fail if so.
+-- Dedupe first, keeping the most recent reaction per (articleid,
+-- authorid) pair and dropping the rest.
+DELETE FROM "postinteraction" a
+USING "postinteraction" b
+WHERE a."articleid" = b."articleid"
+AND a."authorid" = b."authorid"
+AND a."postreactionid" < b."postreactionid";
+
+ALTER TABLE "postinteraction"
+ADD CONSTRAINT "postinteraction_articleid_authorid_key" UNIQUE ("articleid", "authorid");
+
+-- Note: if duplicates existed and got deduped above, post.likes/dislikes
+-- may already be inflated from when each duplicate row was created (each
+-- one incremented a counter at the time). This migration prevents future
+-- drift but doesn't retroactively recount existing posts — if you suspect
+-- real drift, that's a separate one-off recount query, not part of this.
+
+-- 2. postcomment: add deletedat for soft-delete.
+-- No backfill needed — every existing row is a real, non-deleted comment.
+ALTER TABLE "postcomment"
+ADD COLUMN "deletedat" TIMESTAMP(6);
+```
