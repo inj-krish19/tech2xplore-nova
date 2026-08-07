@@ -54,3 +54,21 @@ export async function sendContactInquiryEmail(inquiry: ContactInquiry) {
     `,
   });
 }
+
+export async function sendAutomationFailureEmail(details: { provider: string; index: number; error: string }) {
+  await transporter.sendMail({
+    from: `Tech2Xplore Automation <${process.env.GMAIL_USER}>`,
+    to: process.env.GMAIL_USER,
+    subject: `[Automation failed] LinkedIn post — ${details.provider}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+        <h2>LinkedIn automation run failed</h2>
+        <p><strong>Provider:</strong> ${details.provider}</p>
+        <p><strong>Index:</strong> ${details.index}</p>
+        <p><strong>Error:</strong></p>
+        <p style="white-space: pre-wrap; font-family: monospace; font-size: 13px;">${details.error}</p>
+        <p>Check the admin panel's Org Posts section to retry manually once the underlying issue is fixed.</p>
+      </div>
+    `,
+  });
+}
