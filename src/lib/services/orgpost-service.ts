@@ -57,3 +57,37 @@ export async function upsertOrgPostFromAutomation(input: OrgPostAutomationInput)
     },
   });
 }
+
+/**
+ * Admin panel listing — paginated, optional search across title and
+ * provider. No in_use check on delete like categories/keywords/
+ * communities have — nothing in the schema has a foreign key pointing
+ * at orgpost, so a delete here is a plain, unblocked removal.
+ */
+export async function adminListOrgPosts(page: number, pageSize: number, search?: string) {
+  const where = search
+    ? {
+        OR: [
+          { title: { contains: search, mode: "insensitive" as const } },
+          { provider: { contains: search, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+
+  const [items, total] = await Promise.all([
+    db.orgpost.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: { publishedat: "desc" },
+    }),
+    db.orgpost.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}
+
+export async function deleteOrgPost(orgPostId: bigint) {
+  await db.orgpost.delete({ where: { orgpostid: orgPostId } });
+  return { status: "deleted" as const };
+}
