@@ -22,10 +22,10 @@ const COMPANY_STATS = [
 ];
 
 const LINKEDIN_STATS = [
-    { value: "56.6K+", label: "Impressions (YTD 2026)" },
-    { value: "800+", label: "Reactions" },
+    { value: "60K+", label: "Impressions (YTD 2026)" },
+    { value: "900+", label: "Reactions" },
     { value: "50+", label: "Comments" },
-    { value: "325+", label: "Followers" },
+    { value: "350+", label: "Followers" },
 ];
 
 export function StatsSection() {

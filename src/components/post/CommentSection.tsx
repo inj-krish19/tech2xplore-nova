@@ -15,13 +15,16 @@ type CommentNode = {
     authorId: string;
     author: { username: string; name: string; profilepicture: string | null };
     replies: CommentNode[];
+    deleted: boolean;
 };
 
 /**
- * ASSUMED endpoints (matching comment-service.ts's real functions):
+ * CONFIRMED endpoints (this comment previously said "ASSUMED" and had
+ * the delete path wrong — DELETE /api/posts/[id]/comments/[commentId]
+ * doesn't exist and was 404ing on every delete attempt):
  *   GET    /api/posts/[id]/comments -> CommentNode[]                (listCommentsForPost)
  *   POST   /api/posts/[id]/comments body {comment, parentcommentid?} -> comment row (createComment)
- *   DELETE /api/posts/[id]/comments/[commentId] -> {status: "deleted"|"has_replies"|"not_found"}
+ *   DELETE /api/comments/[id] -> {deleted: true}                    (deleteComment, now a soft-delete)
  *
  * "isOwn" isn't part of CommentNode — computed client-side by comparing
  * each node's authorId against the session's authorid, rather than
@@ -78,14 +81,11 @@ export function CommentSection({ postId }: { postId: string }) {
 
     async function deleteComment(id: string) {
         try {
-            const result = await apiFetch<{ status: "deleted" | "has_replies" | "not_found" }>(
-                `/api/posts/${postId}/comments/${id}`,
-                { method: "DELETE" }
-            );
-            if (result.status === "has_replies") {
-                toast({ message: "Can't delete a comment that has replies", variant: "error" });
-                return;
-            }
+            await apiFetch<{ deleted: true }>(`/api/comments/${id}`, { method: "DELETE" });
+            // Re-fetch rather than mutate the tree in place — a deleted
+            // comment with replies stays in the tree (soft-deleted, shown
+            // as "[deleted]"), so a full re-fetch is simpler and correct
+            // than trying to patch just one node's text/deleted flag by hand.
             const fresh = await apiFetch<CommentNode[]>(`/api/posts/${postId}/comments`);
             setComments(Array.isArray(fresh) ? fresh : []);
             toast({ message: "Comment deleted", variant: "success" });
@@ -191,12 +191,16 @@ function CommentBranch({
                         </Link>
                         <span className="text-xs text-muted-foreground">{new Date(node.createdAt).toLocaleDateString()}</span>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">{node.comment}</p>
+                    <p className={`mt-1 text-sm ${node.deleted ? "italic text-muted-foreground/60" : "text-muted-foreground"}`}>
+                        {node.comment}
+                    </p>
                     <div className="mt-2 flex items-center gap-3">
-                        <button onClick={() => onReplyClick(node.id)} className="text-xs font-medium text-accent hover:opacity-80">
-                            Reply
-                        </button>
-                        {isOwn && (
+                        {!node.deleted && (
+                            <button onClick={() => onReplyClick(node.id)} className="text-xs font-medium text-accent hover:opacity-80">
+                                Reply
+                            </button>
+                        )}
+                        {isOwn && !node.deleted && (
                             <button
                                 onClick={() => onDelete(node.id)}
                                 className="flex items-center gap-1 text-xs font-medium text-red-500 hover:opacity-80"
