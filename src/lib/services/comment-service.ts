@@ -9,6 +9,7 @@ export interface CommentNode {
   authorId: string;
   author: { username: string; name: string; profilepicture: string | null };
   replies: CommentNode[];
+  deleted: boolean;
 }
 
 function buildTree(
@@ -18,6 +19,7 @@ function buildTree(
     createdat: Date;
     parentcommentid: bigint | null;
     authorid: bigint;
+    deletedat: Date | null;
     blogger: { username: string; name: string; profilepicture: string | null };
   }[]
 ): CommentNode[] {
@@ -27,11 +29,14 @@ function buildTree(
   for (const c of flat) {
     byId.set(c.postcommentid.toString(), {
       id: c.postcommentid.toString(),
-      comment: c.comment,
+      // Text is masked here, server-side, not left to the frontend to
+      // hide — a deleted comment's real text never leaves this function.
+      comment: c.deletedat ? "[deleted]" : c.comment,
       createdAt: c.createdat.toISOString(),
       authorId: c.authorid.toString(),
       author: c.blogger,
       replies: [],
+      deleted: c.deletedat !== null,
     });
   }
   for (const c of flat) {
@@ -55,6 +60,7 @@ export async function listCommentsForPost(articleId: bigint): Promise<CommentNod
       createdat: true,
       parentcommentid: true,
       authorid: true,
+      deletedat: true,
       blogger: { select: { username: true, name: true, profilepicture: true } },
     },
   });
@@ -90,6 +96,9 @@ export async function updateComment(commentId: bigint, requesterId: bigint, newT
   if (existing.authorid !== requesterId) {
     throw new ForbiddenError("You can only edit your own comment");
   }
+  if (existing.deletedat) {
+    throw new ForbiddenError("Can't edit a deleted comment");
+  }
   return db.postcomment.update({
     where: { postcommentid: commentId },
     data: { comment: newText },
@@ -97,27 +106,32 @@ export async function updateComment(commentId: bigint, requesterId: bigint, newT
 }
 
 /**
- * `postcomment`'s self-referencing FK is onDelete: NoAction — deleting a
- * comment that has replies will fail at the DB level. Rather than let
- * that surface as a raw 500, block it up front with a clear message.
- * A real "soft delete" (mark text as [deleted], keep the row) would
- * avoid this entirely but that's a schema addition — not doing that
- * without the production-team sign-off the standing instruction asks for.
+ * Soft-delete: sets deletedat and masks the text going forward
+ * (buildTree above renders it as "[deleted]"), but keeps the row —
+ * `postcomment`'s self-referencing FK is onDelete: NoAction, so a hard
+ * delete would still fail if the comment has replies. Soft-delete
+ * sidesteps that FK constraint entirely rather than working around it,
+ * which is why the old has_replies block this replaced no longer
+ * exists — there's nothing left to block.
+ *
+ * commentscount is decremented once, guarded by the deletedat check
+ * above (deleteComment on an already-deleted comment is a no-op, not a
+ * double-decrement).
  */
 export async function deleteComment(commentId: bigint, requesterId: bigint, isAdmin: boolean) {
-  const existing = await db.postcomment.findUnique({
-    where: { postcommentid: commentId },
-    include: { other_postcomment: { select: { postcommentid: true } } },
-  });
+  const existing = await db.postcomment.findUnique({ where: { postcommentid: commentId } });
   if (!existing) return { status: "not_found" as const };
   if (existing.authorid !== requesterId && !isAdmin) {
     throw new ForbiddenError("You can only delete your own comment");
   }
-  if (existing.other_postcomment.length > 0) {
-    return { status: "has_replies" as const };
+  if (existing.deletedat) {
+    return { status: "already_deleted" as const };
   }
 
-  await db.postcomment.delete({ where: { postcommentid: commentId } });
+  await db.postcomment.update({
+    where: { postcommentid: commentId },
+    data: { deletedat: new Date() },
+  });
   await db.post.update({
     where: { articleid: existing.articleid },
     data: { commentscount: { decrement: 1 } },

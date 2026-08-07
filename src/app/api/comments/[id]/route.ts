@@ -31,8 +31,10 @@ export const DELETE = withErrorHandling<Ctx>(async (_req, { params }) => {
   const result = await deleteComment(BigInt(id), BigInt(session.user.id), isAdmin);
 
   if (result.status === "not_found") return apiError("Comment not found", 404);
-  if (result.status === "has_replies") {
-    return apiError("This comment has replies and can't be deleted", 409);
-  }
+  // has_replies no longer exists as a status — soft-delete removed the
+  // FK conflict that used to block this entirely (see comment-service.ts).
+  // already_deleted is a no-op success, not an error: deleting an
+  // already-deleted comment twice shouldn't surface as a failure to
+  // the user, e.g. a double-click or a stale UI state.
   return apiSuccess({ deleted: true });
 });
