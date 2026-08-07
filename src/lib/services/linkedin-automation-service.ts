@@ -139,6 +139,11 @@ async function registerLinkedInImage(): Promise<{ uploadUrl: string; assetId: st
   const json = await res.json();
 
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error(
+        `LinkedIn org token appears expired or invalid (401) — check LINKEDIN_ORG_ACCESS_TOKEN. Response: ${JSON.stringify(json)}`
+      );
+    }
     throw new Error(`LinkedIn image registration failed (${res.status}): ${JSON.stringify(json)}`);
   }
   return { uploadUrl: json.value.uploadUrl, assetId: json.value.image };
@@ -319,6 +324,11 @@ export async function runLinkedInOrgAutomation(provider: LinkedInProvider, index
   const publishResult = await publishToLinkedInOrg(post.title, post.content, assetId);
 
   if (publishResult.status !== 201) {
+    if (publishResult.status === 401) {
+      throw new Error(
+        `LinkedIn org token appears expired or invalid (401) — check LINKEDIN_ORG_ACCESS_TOKEN. Response: ${JSON.stringify(publishResult.errorBody)}`
+      );
+    }
     throw new Error(
       `LinkedIn publish failed with status ${publishResult.status}: ${JSON.stringify(publishResult.errorBody)}`
     );
