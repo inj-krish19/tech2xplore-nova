@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} selection:bg-sky-200 dark:selection:bg-purple-200 dark:selection:text-fuchsia-800`}
     >
       <body>
         <Providers>{children}</Providers>
