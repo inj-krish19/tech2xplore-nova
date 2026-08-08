@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 const NAV_ITEMS = [
     { href: "/admin", label: "Overview" },
     { href: "/admin/posts", label: "Posts" },
+    { href: "/admin/orgposts", label: "Org Posts" },
     { href: "/admin/users", label: "Users" },
     { href: "/admin/categories", label: "Categories" },
     { href: "/admin/keywords", label: "Keywords" },
