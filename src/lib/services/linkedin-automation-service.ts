@@ -16,9 +16,63 @@ interface NormalizedArticle {
 const MAX_NEWS_PER_SOURCE = Number(process.env.LINKEDIN_AUTOMATION_MAX_NEWS) || 3;
 const MAX_WEIGHT_DAYS = Number(process.env.LINKEDIN_AUTOMATION_MAX_WEIGHT_DAYS) || 3;
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableStatus(status: number) {
+  return status === 429 || status >= 500;
+}
+
+/**
+ * Retry-with-exponential-backoff, used ONLY for read calls in this
+ * pipeline (the four provider news fetches, image download, and the
+ * Gemini text-generation call — none of those create anything, so a
+ * retry can't duplicate a side effect).
+ *
+ * Deliberately NOT used for any of the three LinkedIn write calls
+ * (image register, image upload, publish) — a request that actually
+ * succeeded on LinkedIn's end but whose response got lost before
+ * reaching us would retry into a real duplicate post on the company
+ * page. Those still fail fast on the first attempt, surfaced via the
+ * cron failure-alert email and the admin panel's manual retry button,
+ * where a human decides whether to re-run — not something this
+ * function silently attempts to smooth over.
+ *
+ * 429/5xx and network errors are retried; any other status (4xx other
+ * than 429 — including the 401 case this file gives a specific message
+ * for) is returned as-is on the first attempt, since retrying an
+ * auth/bad-request error won't fix it.
+ */
+async function fetchWithRetry(
+  url: string,
+  init?: RequestInit,
+  { retries = 2, baseDelayMs = 500 }: { retries?: number; baseDelayMs?: number } = {}
+): Promise<Response> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      if (res.ok || !isRetryableStatus(res.status)) {
+        return res;
+      }
+      lastError = new Error(`Retryable HTTP status ${res.status} from ${url}`);
+    } catch (err) {
+      lastError = err; // network error — also retryable
+    }
+
+    if (attempt < retries) {
+      await sleep(baseDelayMs * 2 ** attempt);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
 async function fetchGNewsArticles(): Promise<unknown[]> {
   const fetchCount = (MAX_NEWS_PER_SOURCE + 1) * MAX_WEIGHT_DAYS;
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://gnews.io/api/v4/top-headlines?apikey=${process.env.GNEWS_API_KEY}&category=technology&lang=en&country=us&max=${fetchCount}`
   );
   const json = await res.json();
@@ -27,7 +81,7 @@ async function fetchGNewsArticles(): Promise<unknown[]> {
 
 async function fetchNewsAPIArticles(): Promise<unknown[]> {
   const fetchCount = (MAX_NEWS_PER_SOURCE + 1) * MAX_WEIGHT_DAYS;
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://newsapi.org/v2/top-headlines?apiKey=${process.env.NEWSAPI_API_KEY}&category=technology&page=0&pageSize=${fetchCount}`
   );
   const json = await res.json();
@@ -35,7 +89,7 @@ async function fetchNewsAPIArticles(): Promise<unknown[]> {
 }
 
 async function fetchNYTimesArticles(): Promise<unknown[]> {
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://api.nytimes.com/svc/topstories/v2/technology.json?api-key=${process.env.NYTIMES_API_KEY}`
   );
   const json = await res.json();
@@ -43,7 +97,7 @@ async function fetchNYTimesArticles(): Promise<unknown[]> {
 }
 
 async function fetchMediastackArticles(): Promise<unknown[]> {
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://api.mediastack.com/v1/news?access_key=${process.env.MEDIASTACK_API_KEY}&categories=technology&languages=en`
   );
   const json = await res.json();
@@ -111,7 +165,7 @@ const PROVIDERS: Record<
 // ---------------------------------------------------------------------------
 
 async function fetchImageBytes(imageUrl: string): Promise<Buffer> {
-  const res = await fetch(imageUrl);
+  const res = await fetchWithRetry(imageUrl);
   if (!res.ok) throw new Error(`Failed to download image (${res.status}): ${imageUrl}`);
   return Buffer.from(await res.arrayBuffer());
 }
@@ -216,7 +270,7 @@ function sanitizeForLinkedIn(rawText: string): string {
 async function generateLinkedInPostText(article: NormalizedArticle): Promise<{ title: string | null; content: string }> {
   const prompt = `${process.env.GEMINI_PROMPT}\nContent: ${article.description}\nArticle Source: ${article.sourceUrl}`;
 
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`,
     {
       method: "POST",
